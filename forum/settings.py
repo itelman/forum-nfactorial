@@ -26,6 +26,17 @@ DEBUG = True
 
 APPEND_SLASH = False
 
+import os
+
+# Static files settings
+STATIC_URL = "/static/"
+
+# Directory where `collectstatic` will store collected files
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
+# If using WhiteNoise to serve static files in production
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 ALLOWED_HOSTS = []
 
 # Application definition
@@ -68,6 +79,7 @@ SIMPLE_JWT = {
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
