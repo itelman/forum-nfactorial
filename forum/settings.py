@@ -23,8 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 import environ
 
 env = environ.Env()
-environ.Env.read_env()
 
+# Read environment variables (Render will inject them)
 SECRET_KEY = env("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!

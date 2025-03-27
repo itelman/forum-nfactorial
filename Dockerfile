@@ -1,7 +1,7 @@
-# Use official Python image as a base
+# Use official Python image
 FROM python:3.11
 
-# Set working directory in the container
+# Set working directory
 WORKDIR /app
 
 # Copy project files
@@ -13,8 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Collect static files
 RUN python manage.py collectstatic --noinput
 
-# Expose port
+# Expose port (Render sets a dynamic port)
 EXPOSE 8000
 
-# Start the Django server
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "forum.wsgi:application"]
+# Start the application (Render provides $PORT)
+CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "forum.wsgi:application"]
