@@ -1,7 +1,7 @@
-# Use official Python image
+# Use official Python image as a base
 FROM python:3.11
 
-# Set working directory
+# Set working directory in the container
 WORKDIR /app
 
 # Copy project files
@@ -10,11 +10,5 @@ COPY . .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
-
 # Expose port (Render sets a dynamic port)
-EXPOSE 8000
-
-# Start the application (Render provides $PORT)
-CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "forum.wsgi:application"]
+CMD ["sh", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn forum.wsgi:application --bind 0.0.0.0:$PORT"]
