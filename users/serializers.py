@@ -5,9 +5,9 @@ from rest_framework import serializers
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "username", "email", "date_joined"]
+        fields = ["id", "username", "email", "date_joined", "password"]
         extra_kwargs = {
-            "password": {"write_only": True},
+            "password": {"write_only": True},  # Ensure password is not exposed
             "email": {"required": True},
             "username": {"required": True},
         }
@@ -25,7 +25,12 @@ class UserSerializer(serializers.ModelSerializer):
         return value.lower()
 
     def create(self, validated_data):
-        """Save the user with lowercase username and email"""
+        """Save the user with a properly hashed password"""
+        password = validated_data.pop("password")  # Extract password before creating the user
         validated_data["username"] = validated_data["username"].lower()
         validated_data["email"] = validated_data["email"].lower()
-        return User.objects.create_user(**validated_data)
+
+        user = User(**validated_data)
+        user.set_password(password)  # ✅ Hashes the password before saving
+        user.save()
+        return user
