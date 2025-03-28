@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{{with .Error}}
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="shortcut icon" href="/static/img/favicon.ico" type="image/x-icon">
+        <title>Error {{.Code}} - Forum</title>
+        <link rel="stylesheet" href="/static/css/error.css">
+    </head>
+
+    <body>
+    <section class="error-page">
+        <div class="error-page-container">
+            <img class="error-page-img" src="/static/img/sad-face-svgrepo-com.svg" alt="sad face">
+            <h2 class="error-page-h2">{{.Code}}</h2>
+            <p>{{.Text}}</p>
+
+            <br><br>
+            <a class="error-page-home" href="/">Home</a>
+        </div>
+    </section>
+    </body>
+{{end}}
+
+</html>

@@ -1,0 +1,56 @@
+{{template "base" .}}
+
+{{define "title"}}Create Post{{end}}
+
+{{define "body"}}
+    {{$categories := .Categories}}
+    <form action="/user/posts/create" method="POST" enctype="multipart/form-data">
+        {{with .Form}}
+            <div>
+                <label>Title:</label>
+                {{with .Errors.Get "title"}}
+                    <label class="error">{{.}}</label>
+                {{end}}
+                <input type="text" name="title" value='{{.Get "title"}}'>
+            </div>
+
+            <div>
+                <label>Content:</label>
+                {{with .Errors.Get "content"}}
+                    <label class="error">{{.}}</label>
+                {{end}}
+                <textarea name="content">{{.Get "content"}}</textarea>
+            </div>
+
+            <div>
+                <label>Choose image to upload:</label>
+                {{with .Errors.Get "image"}}
+                    <label class="error">{{.}}</label>
+                {{end}}
+                <div>
+                    <input type="file" name="image" id="image" accept="image/png, image/jpeg, image/gif">
+                </div>
+            </div>
+
+            <div>
+                {{with .Errors.Get "categories"}}
+                    <label class="error">{{.}}</label>
+                {{end}}
+                <fieldset class="categories-fieldset">
+                    <legend>Categories</legend>
+
+                    {{range $categories}}
+                        <div class="categories-container-inner">
+                            <input type="checkbox" id="{{.ID}}" name="categories_id" value="{{.ID}}">
+                            <label for="{{.ID}}">{{.Name}}</label>
+                        </div>
+                    {{end}}
+                </fieldset>
+            </div>
+
+            <div>
+                <input type="submit" value="Publish post">
+            </div>
+        {{end}}
+    </form>
+{{end}}
