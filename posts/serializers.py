@@ -48,7 +48,7 @@ class PostSerializer(serializers.ModelSerializer):
         # Apply custom formatting
         return {
             "id": data["id"],
-            "user": instance.user.username,
+            "user": {"id": instance.user.id, "username": instance.user.username},
             "title": data["title"],
             "content": data["content"],
             "categories": [category.name for category in instance.categories.all()],

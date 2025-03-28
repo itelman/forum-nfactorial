@@ -28,7 +28,7 @@ class CommentSerializer(serializers.ModelSerializer):
         return {
             "id": data["id"],
             "post_id": data["post"],
-            "user": instance.user.username,  # Show username instead of user ID
+            "user": {"id": instance.user.id, "username": instance.user.username},
             "content": data["content"],
             "likes": data["likes"],
             "dislikes": data["dislikes"],
