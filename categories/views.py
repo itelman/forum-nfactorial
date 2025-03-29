@@ -18,5 +18,5 @@ class CategoryListView(ListAPIView):
 class CategoryPostsView(APIView):
     def get(self, request, pk):
         category = get_object_or_404(Category, id=pk)
-        posts = Post.objects.filter(postcategory__category=category)
+        posts = Post.objects.filter(postcategory__category=category).order_by('-created')
         return Response(PostSerializer(posts, many=True, context={'request': request}).data)

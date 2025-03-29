@@ -10,7 +10,12 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = '__all__'
-        read_only_fields = ['id', 'user', 'likes', 'dislikes', 'created', 'edited']
+        read_only_fields = ['id', 'user', 'likes', 'dislikes', 'created', 'edited', 'post']
+
+    def create(self, validated_data):
+        """Assign post instance from view before saving"""
+        post = self.context.get('post')  # Retrieve post instance from context
+        return Comment.objects.create(post=post, **validated_data)
 
     def get_auth_user_reaction(self, obj):
         """Retrieve the authenticated user's reaction to the comment (1=like, 0=dislike, -1=no reaction)."""
@@ -24,10 +29,9 @@ class CommentSerializer(serializers.ModelSerializer):
         """Customize comment serialization output"""
         data = super().to_representation(instance)
 
-        # Apply custom formatting
         return {
             "id": data["id"],
-            "post_id": data["post"],
+            "post_id": instance.post.id,  # Ensure the correct post ID is returned
             "user": {"id": instance.user.id, "username": instance.user.username},
             "content": data["content"],
             "likes": data["likes"],
@@ -35,3 +39,4 @@ class CommentSerializer(serializers.ModelSerializer):
             "created": data["created"],
             "auth_user_reaction": self.get_auth_user_reaction(instance),
         }
+

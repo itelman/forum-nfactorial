@@ -17,12 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
-from .views import home_view
+from .views import HealthCheckView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('user', include('users.urls')),
     path('posts', include('posts.urls')),  # Handles both posts & comments
     path('categories', include('categories.urls')),
-    path('', home_view, name="home"),
+    path('health', HealthCheckView.as_view(), name="health-check"),
 ]

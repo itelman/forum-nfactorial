@@ -13,17 +13,17 @@ class CommentViewSet(viewsets.ViewSet):
     def list(self, request, post_id):
         """Retrieve all comments under a specific post."""
         post = get_object_or_404(Post, id=post_id)
-        comments = post.comments.all()
-        serializer = CommentSerializer(comments, many=True, context={'request': request})
+        comments = post.comments.all().order_by('-created')
+        serializer = CommentSerializer(comments, many=True, context={'request': request, 'post': post})
         return Response(serializer.data)
 
     def create(self, request, post_id):
         """Create a comment under a post."""
         post = get_object_or_404(Post, id=post_id)
-        serializer = CommentSerializer(data=request.data, context={'request': request})
+        serializer = CommentSerializer(data=request.data, context={'request': request, 'post': post})
 
         if serializer.is_valid():
-            comment = serializer.save(user=request.user, post=post)
+            comment = serializer.save(user=request.user)  # post is assigned automatically
             return Response(CommentSerializer(comment, context={'request': request}).data,
                             status=status.HTTP_200_OK)
 
@@ -32,7 +32,7 @@ class CommentViewSet(viewsets.ViewSet):
     def retrieve(self, request, post_id, comment_id):
         """Retrieve a specific comment under a post."""
         comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
-        serializer = CommentSerializer(comment, context={'request': request})
+        serializer = CommentSerializer(comment, context={'request': request, 'post': comment.post})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, post_id, comment_id):
@@ -42,7 +42,7 @@ class CommentViewSet(viewsets.ViewSet):
         if comment.user != request.user:
             return Response({"error": "You can only edit your own comments."}, status=status.HTTP_403_FORBIDDEN)
 
-        serializer = CommentSerializer(comment, data=request.data, partial=True, context={'request': request})
+        serializer = CommentSerializer(comment, data=request.data, partial=True, context={'request': request, 'post': comment.post})
         if serializer.is_valid():
             serializer.save()
             return Response(CommentSerializer(comment, context={'request': request}).data, status=status.HTTP_200_OK)

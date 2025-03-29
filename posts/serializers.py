@@ -56,5 +56,5 @@ class PostSerializer(serializers.ModelSerializer):
             "dislikes": data["dislikes"],
             "created": data["created"],
             "auth_user_reaction": self.get_auth_user_reaction(instance),
-            "comments": CommentSerializer(instance.comments.all(), many=True, context=self.context).data,
+            "comments": CommentSerializer(instance.comments.all().order_by('-created'), many=True, context=self.context).data,
         }
