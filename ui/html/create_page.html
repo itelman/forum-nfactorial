@@ -4,7 +4,7 @@
 
 {{define "body"}}
     {{$categories := .Categories}}
-    <form action="/user/posts/create" method="POST" enctype="multipart/form-data">
+    <form action="/user/posts/create" method="POST">
         {{with .Form}}
             <div>
                 <label>Title:</label>
@@ -20,16 +20,6 @@
                     <label class="error">{{.}}</label>
                 {{end}}
                 <textarea name="content">{{.Get "content"}}</textarea>
-            </div>
-
-            <div>
-                <label>Choose image to upload:</label>
-                {{with .Errors.Get "image"}}
-                    <label class="error">{{.}}</label>
-                {{end}}
-                <div>
-                    <input type="file" name="image" id="image" accept="image/png, image/jpeg, image/gif">
-                </div>
             </div>
 
             <div>

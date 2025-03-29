@@ -10,7 +10,7 @@ import (
 )
 
 type Service interface {
-	GetPostsByCategories(input *GetPostsByCategoriesInput) (*GetManyPostsResponse, error)
+	GetPostsByCategories(input *GetPostsByCategoriesInput) (*GetPostsByCategoriesResponse, error)
 }
 
 type service struct {
@@ -34,11 +34,15 @@ func WithAPI(apiLink string) Option {
 	}
 }
 
-type GetManyPostsResponse struct {
+type GetPostsByCategoriesInput struct {
+	CategoryID int
+}
+
+type GetPostsByCategoriesResponse struct {
 	Posts []*dto.Post
 }
 
-func (s *service) GetPostsByCategories(input *GetPostsByCategoriesInput) (*GetManyPostsResponse, error) {
+func (s *service) GetPostsByCategories(input *GetPostsByCategoriesInput) (*GetPostsByCategoriesResponse, error) {
 	req, err := http.NewRequest(
 		http.MethodGet,
 		fmt.Sprintf("%s/%d/posts", s.categoriesEndpoint, input.CategoryID),
@@ -68,5 +72,5 @@ func (s *service) GetPostsByCategories(input *GetPostsByCategoriesInput) (*GetMa
 		return nil, err
 	}
 
-	return &GetManyPostsResponse{posts}, nil
+	return &GetPostsByCategoriesResponse{posts}, nil
 }

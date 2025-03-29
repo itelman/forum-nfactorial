@@ -21,11 +21,6 @@
 
             <div style="border-top: 1px solid #E4E5E7; border-bottom: 1px solid #E4E5E7;">
                 <pre><code>{{.Content}}</code></pre>
-
-                {{with .Image}}
-                    <img src="{{.Path}}" alt="post image"
-                         style="max-width: 500px; max-height: 500px; display: block; margin-left: auto; margin-right: auto;">
-                {{end}}
             </div>
 
             <div class="metadata">
@@ -115,6 +110,7 @@
                         {{if $authUser}}
                             <form action="/user/posts/comments/react" method="POST">
                                 <input type="hidden" name="comment_id" value="{{.ID}}">
+                                <input type="hidden" name="post_id" value="{{.PostID}}">
                                 <input type="hidden" name="is_like" value="1">
 
                                 <button class="reaction like">
@@ -138,6 +134,7 @@
                         {{if $authUser}}
                             <form action="/user/posts/comments/react" method="POST">
                                 <input type="hidden" name="comment_id" value="{{.ID}}">
+                                <input type="hidden" name="post_id" value="{{.PostID}}">
                                 <input type="hidden" name="is_like" value="0">
 
                                 <button class="reaction dislike">
@@ -161,8 +158,8 @@
                     </div>
 
                     {{if and ($authUser) (eq $authUser.ID .User.ID)}}
-                        <a class="button" href="/user/posts/comments/edit?id={{.ID}}">Edit</a>
-                        <a class="button" onclick="confirmCommentDel('{{.ID}}')">Remove</a>
+                        <a class="button" href="/user/posts/comments/edit?id={{.ID}}&post_id={{.PostID}}">Edit</a>
+                        <a class="button" onclick="confirmCommentDel('{{.ID}}','{{.PostID}}')">Remove</a>
                     {{end}}
 
                     <time class="comment-posted-time">Created: {{humanDate .Created}}</time>
@@ -180,9 +177,9 @@
             }
         }
 
-        function confirmCommentDel(id) {
+        function confirmCommentDel(id,postId) {
             if (confirm("Are you sure you want to remove this comment?")) {
-                window.location.href = `/user/posts/comments/delete?id=${id}`;
+                window.location.href = `/user/posts/comments/delete?id=${id}&post_id=${postId}`;
             }
         }
     </script>

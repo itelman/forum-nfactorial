@@ -1,9 +1,7 @@
 package comments
 
 import (
-	"github.com/itelman/forum/internal/dto"
 	"github.com/itelman/forum/internal/service/comments/domain"
-	"github.com/itelman/forum/pkg/validator"
 	"net/http"
 	"strconv"
 )
@@ -20,9 +18,7 @@ func DecodeCreateComment(r *http.Request) (interface{}, error) {
 
 	return &CreateCommentInput{
 		PostID:  postId,
-		UserID:  dto.GetAuthUser(r).ID,
 		Content: r.PostForm.Get("content"),
-		Errors:  make(validator.Errors),
 	}, nil
 }
 
@@ -32,8 +28,14 @@ func DecodeGetComment(r *http.Request) (interface{}, error) {
 		return nil, domain.ErrCommentsBadRequest
 	}
 
+	postId, err := strconv.Atoi(r.URL.Query().Get("post_id"))
+	if err != nil {
+		return nil, domain.ErrCommentsBadRequest
+	}
+
 	return &GetCommentInput{
-		ID: id,
+		PostID: postId,
+		ID:     id,
 	}, nil
 }
 
@@ -43,14 +45,19 @@ func DecodeUpdateComment(r *http.Request) (interface{}, error) {
 		return nil, domain.ErrCommentsBadRequest
 	}
 
+	postId, err := strconv.Atoi(r.URL.Query().Get("post_id"))
+	if err != nil {
+		return nil, domain.ErrCommentsBadRequest
+	}
+
 	if err := r.ParseForm(); err != nil {
 		return nil, domain.ErrCommentsBadRequest
 	}
 
 	return &UpdateCommentInput{
+		PostID:  postId,
 		ID:      id,
 		Content: r.PostForm.Get("content"),
-		Errors:  make(validator.Errors),
 	}, nil
 }
 
@@ -60,7 +67,13 @@ func DecodeDeleteComment(r *http.Request) (interface{}, error) {
 		return nil, domain.ErrCommentsBadRequest
 	}
 
+	postId, err := strconv.Atoi(r.URL.Query().Get("post_id"))
+	if err != nil {
+		return nil, domain.ErrCommentsBadRequest
+	}
+
 	return &DeleteCommentInput{
-		ID: id,
+		PostID: postId,
+		ID:     id,
 	}, nil
 }

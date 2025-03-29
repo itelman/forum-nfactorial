@@ -1,24 +1,25 @@
 package comments
 
 import (
-	"database/sql"
+	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
-
+	"fmt"
 	"github.com/itelman/forum/internal/dto"
-	"github.com/itelman/forum/internal/service/comments/adapters"
-	"github.com/itelman/forum/internal/service/comments/domain"
+	"io/ioutil"
+	"net/http"
 )
 
 type Service interface {
-	CreateComment(input *CreateCommentInput) error
+	CreateComment(ctx context.Context, input *CreateCommentInput) error
 	GetComment(input *GetCommentInput) (*GetCommentResponse, error)
-	UpdateComment(input *UpdateCommentInput, comment *dto.Comment) error
-	DeleteComment(input *DeleteCommentInput) error
+	UpdateComment(ctx context.Context, input *UpdateCommentInput) error
+	DeleteComment(ctx context.Context, input *DeleteCommentInput) error
 }
 
 type service struct {
-	comments domain.CommentsRepository
-	posts    domain.PostsRepository
+	postsEndpoint string
 }
 
 func NewService(opts ...Option) *service {
@@ -32,33 +33,54 @@ func NewService(opts ...Option) *service {
 
 type Option func(*service)
 
-func WithSqlite(db *sql.DB) Option {
+func WithAPI(apiLink string) Option {
 	return func(s *service) {
-		s.comments = adapters.NewCommentsRepositorySqlite(db)
-		s.posts = adapters.NewPostsRepositorySqlite(db)
+		s.postsEndpoint = apiLink + "/posts"
 	}
 }
 
-func (s *service) CreateComment(input *CreateCommentInput) error {
-	if err := input.validate(); err != nil {
+type CreateCommentInput struct {
+	PostID  int
+	Content string
+}
+
+func (s *service) CreateComment(ctx context.Context, input *CreateCommentInput) error {
+	reqInput := struct {
+		Content string `json:"content"`
+	}{input.Content}
+
+	reqBody, err := json.Marshal(reqInput)
+	if err != nil {
 		return err
 	}
 
-	if _, err := s.posts.Get(domain.GetPostInput{ID: input.PostID}); errors.Is(err, domain.ErrPostNotFound) {
-		return domain.ErrCommentsBadRequest
-	} else if err != nil {
+	req, err := http.NewRequest(
+		http.MethodPost,
+		fmt.Sprintf("%s/%d/comments", s.postsEndpoint, input.PostID),
+		bytes.NewBuffer(reqBody),
+	)
+	if err != nil {
 		return err
 	}
 
-	if err := s.comments.Create(domain.CreateCommentInput{
-		PostID:  input.PostID,
-		UserID:  input.UserID,
-		Content: input.Content,
-	}); err != nil {
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
+
+	apiResp, err := http.DefaultClient.Do(req)
+	if err != nil {
 		return err
+	}
+
+	if apiResp.StatusCode != http.StatusOK {
+		return errors.New("COMMENTS: /CREATE - API ERROR")
 	}
 
 	return nil
+}
+
+type GetCommentInput struct {
+	PostID int
+	ID     int
 }
 
 type GetCommentResponse struct {
@@ -66,40 +88,102 @@ type GetCommentResponse struct {
 }
 
 func (s *service) GetComment(input *GetCommentInput) (*GetCommentResponse, error) {
-	comment, err := s.comments.Get(domain.GetCommentInput{
-		ID: input.ID,
-	})
+	req, err := http.NewRequest(
+		http.MethodGet,
+		fmt.Sprintf("%s/%d/comments/%d", s.postsEndpoint, input.PostID, input.ID),
+		nil,
+	)
 	if err != nil {
+		return nil, err
+	}
+
+	apiResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if apiResp.StatusCode != http.StatusOK {
+		return nil, errors.New("COMMENTS: /GET - API ERROR")
+	}
+	defer apiResp.Body.Close()
+
+	respBody, err := ioutil.ReadAll(apiResp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	comment := &dto.Comment{}
+	if err := json.Unmarshal(respBody, comment); err != nil {
 		return nil, err
 	}
 
 	return &GetCommentResponse{comment}, nil
 }
 
-type GetAllCommentsForPostResponse struct {
-	Comments []*dto.Comment
+type UpdateCommentInput struct {
+	PostID  int
+	ID      int
+	Content string
 }
 
-func (s *service) UpdateComment(input *UpdateCommentInput, comment *dto.Comment) error {
-	if err := input.validate(comment); err != nil {
+func (s *service) UpdateComment(ctx context.Context, input *UpdateCommentInput) error {
+	reqInput := struct {
+		Content string `json:"content"`
+	}{input.Content}
+
+	reqBody, err := json.Marshal(reqInput)
+	if err != nil {
 		return err
 	}
 
-	if err := s.comments.Update(domain.UpdateCommentInput{
-		ID:      input.ID,
-		Content: input.Content,
-	}); err != nil {
+	req, err := http.NewRequest(
+		http.MethodPut,
+		fmt.Sprintf("%s/%d/comments/%d", s.postsEndpoint, input.PostID, input.ID),
+		bytes.NewBuffer(reqBody),
+	)
+	if err != nil {
 		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
+
+	apiResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if apiResp.StatusCode != http.StatusOK {
+		return errors.New("COMMENTS: /UPDATE - API ERROR")
 	}
 
 	return nil
 }
 
-func (s *service) DeleteComment(input *DeleteCommentInput) error {
-	if err := s.comments.Delete(domain.DeleteCommentInput{
-		ID: input.ID,
-	}); err != nil {
+type DeleteCommentInput struct {
+	PostID int
+	ID     int
+}
+
+func (s *service) DeleteComment(ctx context.Context, input *DeleteCommentInput) error {
+	req, err := http.NewRequest(
+		http.MethodDelete,
+		fmt.Sprintf("%s/%d/comments/%d", s.postsEndpoint, input.PostID, input.ID),
+		nil,
+	)
+	if err != nil {
 		return err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
+
+	apiResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if apiResp.StatusCode != http.StatusOK {
+		return errors.New("COMMENTS: /DELETE - API ERROR")
 	}
 
 	return nil

@@ -125,10 +125,6 @@ func (s *service) LoginUser(input *LoginUserInput) (*LoginUserResponse, error) {
 	return resp, nil
 }
 
-type GetAuthUserInput struct {
-	AccessToken string
-}
-
 type GetAuthUserResponse struct {
 	User *dto.User
 }

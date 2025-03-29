@@ -1,21 +1,21 @@
 package comment_reactions
 
 import (
-	"database/sql"
+	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
-
-	"github.com/itelman/forum/internal/service/comment_reactions/adapters"
-	"github.com/itelman/forum/internal/service/comment_reactions/domain"
+	"fmt"
+	"github.com/itelman/forum/internal/dto"
+	"net/http"
 )
 
 type Service interface {
-	CreateCommentReaction(input *CreateCommentReactionInput) (*CreateCommentReactionResponse, error)
+	CreateCommentReaction(ctx context.Context, input *CreateCommentReactionInput) error
 }
 
 type service struct {
-	commentReactions domain.CommentReactionsRepository
-	comments         domain.CommentsRepository
-	db               *sql.DB
+	postsEndpoint string
 }
 
 func NewService(opts ...Option) *service {
@@ -29,73 +29,48 @@ func NewService(opts ...Option) *service {
 
 type Option func(*service)
 
-func WithSqlite(db *sql.DB) Option {
+func WithAPI(apiLink string) Option {
 	return func(s *service) {
-		s.commentReactions = adapters.NewCommentReactionsRepositorySqlite(db)
-		s.comments = adapters.NewCommentsRepositorySqlite(db)
-		s.db = db
+		s.postsEndpoint = apiLink + "/posts"
 	}
 }
 
-type CreateCommentReactionResponse struct {
-	PostID int
+type CreateCommentReactionInput struct {
+	CommentID int
+	PostID    int
+	IsLike    int
 }
 
-func (s *service) CreateCommentReaction(input *CreateCommentReactionInput) (*CreateCommentReactionResponse, error) {
-	makeInsertion := true
+func (s *service) CreateCommentReaction(ctx context.Context, input *CreateCommentReactionInput) error {
+	reqInput := struct {
+		IsLike int `json:"is_like"`
+	}{input.IsLike}
 
-	comment, err := s.comments.Get(domain.GetCommentInput{ID: input.CommentID})
-	if errors.Is(err, domain.ErrCommentNotFound) {
-		return nil, domain.ErrCommentReactionsBadRequest
-	} else if err != nil {
-		return nil, err
-	}
-
-	reaction, err := s.commentReactions.Get(domain.GetCommentReactionInput{
-		CommentID: input.CommentID,
-		UserID:    input.UserID,
-	})
-	if err != nil && !errors.Is(err, domain.ErrCommentReactionNotFound) {
-		return nil, err
-	}
-
-	tx, err := s.db.Begin()
+	reqBody, err := json.Marshal(reqInput)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if reaction != nil {
-		if err := s.commentReactions.Delete(tx, domain.DeleteCommentReactionInput{
-			ID: reaction.ID,
-		}); err != nil {
-			tx.Rollback()
-			return nil, err
-		}
-
-		if reaction.IsLike == input.IsLike {
-			makeInsertion = false
-		}
+	req, err := http.NewRequest(
+		http.MethodPost,
+		fmt.Sprintf("%s/%d/comments/%d/react", s.postsEndpoint, input.PostID, input.CommentID),
+		bytes.NewBuffer(reqBody),
+	)
+	if err != nil {
+		return err
 	}
 
-	if makeInsertion {
-		if err := s.commentReactions.Insert(tx, domain.CreateCommentReactionInput{
-			CommentID: input.CommentID,
-			UserID:    input.UserID,
-			IsLike:    input.IsLike,
-		}); err != nil {
-			tx.Rollback()
-			return nil, err
-		}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
+
+	apiResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
 	}
 
-	if err := s.comments.UpdateReactionsCount(tx, domain.UpdateCommentReactionsCountInput{CommentID: input.CommentID}); err != nil {
-		tx.Rollback()
-		return nil, err
+	if apiResp.StatusCode != http.StatusOK {
+		return errors.New("COMMENT REACTIONS: /CREATE - API ERROR")
 	}
 
-	if err = tx.Commit(); err != nil {
-		return nil, err
-	}
-
-	return &CreateCommentReactionResponse{PostID: comment.PostID}, nil
+	return nil
 }

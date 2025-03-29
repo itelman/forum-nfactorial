@@ -1,22 +1,23 @@
 package activity
 
 import (
-	"database/sql"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 
 	"github.com/itelman/forum/internal/dto"
-	"github.com/itelman/forum/internal/service/activity/adapters"
-	"github.com/itelman/forum/internal/service/activity/domain"
 )
 
 type Service interface {
-	GetAllCreatedPosts(input *GetAllCreatedPostsInput) (*GetAllCreatedPostsResponse, error)
-	GetAllReactedPosts(input *GetAllReactedPostsInput) (*GetAllReactedPostsResponse, error)
-	GetAllCommentedPosts(input *GetAllCommentedPostsInput) (*GetAllCommentedPostsResponse, error)
+	GetAllCreatedPosts(ctx context.Context) (*GetAllCreatedPostsResponse, error)
+	GetAllReactedPosts(ctx context.Context) (*GetAllReactedPostsResponse, error)
 }
 
 type service struct {
-	posts    domain.PostsRepository
-	comments domain.CommentsRepository
+	userPostsEndpoint string
 }
 
 func NewService(opts ...Option) *service {
@@ -30,10 +31,9 @@ func NewService(opts ...Option) *service {
 
 type Option func(*service)
 
-func WithSqlite(db *sql.DB) Option {
+func WithAPI(apiLink string) Option {
 	return func(s *service) {
-		s.posts = adapters.NewPostsRepositorySqlite(db)
-		s.comments = adapters.NewCommentsRepositorySqlite(db)
+		s.userPostsEndpoint = apiLink + "/user/posts"
 	}
 }
 
@@ -41,59 +41,76 @@ type GetAllCreatedPostsResponse struct {
 	Posts []*dto.Post
 }
 
-func (s *service) GetAllCreatedPosts(input *GetAllCreatedPostsInput) (*GetAllCreatedPostsResponse, error) {
-	posts, err := s.posts.GetAllCreated(domain.GetAllCreatedPostsInput{
-		AuthUserID:     input.AuthUserID,
-		SortedByNewest: true,
-	})
+func (s *service) GetAllCreatedPosts(ctx context.Context) (*GetAllCreatedPostsResponse, error) {
+	req, err := http.NewRequest(
+		http.MethodGet,
+		s.userPostsEndpoint+"/created",
+		nil,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &GetAllCreatedPostsResponse{Posts: posts}, nil
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
+
+	apiResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if apiResp.StatusCode != http.StatusOK {
+		return nil, errors.New("ACTIVITY: /USER/POSTS/CREATED - API ERROR")
+	}
+	defer apiResp.Body.Close()
+
+	respBody, err := ioutil.ReadAll(apiResp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var posts []*dto.Post
+	if err := json.Unmarshal(respBody, &posts); err != nil {
+		return nil, err
+	}
+
+	return &GetAllCreatedPostsResponse{posts}, nil
 }
 
 type GetAllReactedPostsResponse struct {
 	Posts []*dto.Post
 }
 
-func (s *service) GetAllReactedPosts(input *GetAllReactedPostsInput) (*GetAllReactedPostsResponse, error) {
-	posts, err := s.posts.GetAllReacted(domain.GetAllReactedPostsInput{
-		AuthUserID:     input.AuthUserID,
-		SortedByNewest: true,
-	})
+func (s *service) GetAllReactedPosts(ctx context.Context) (*GetAllReactedPostsResponse, error) {
+	req, err := http.NewRequest(
+		http.MethodGet,
+		s.userPostsEndpoint+"/reacted",
+		nil,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &GetAllReactedPostsResponse{Posts: posts}, nil
-}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
 
-type GetAllCommentedPostsResponse struct {
-	Posts []*dto.Post
-}
-
-func (s *service) GetAllCommentedPosts(input *GetAllCommentedPostsInput) (*GetAllCommentedPostsResponse, error) {
-	posts, err := s.posts.GetAllCommented(domain.GetAllCommentedPostsInput{
-		AuthUserID:     input.AuthUserID,
-		SortedByNewest: true,
-	})
+	apiResp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, post := range posts {
-		comments, err := s.comments.GetAllForPostByUser(domain.GetAllCommentsForPostByUserInput{
-			PostID:         post.ID,
-			AuthUserID:     input.AuthUserID,
-			SortedByNewest: true,
-		})
-		if err != nil {
-			return nil, err
-		}
+	if apiResp.StatusCode != http.StatusOK {
+		return nil, errors.New("ACTIVITY: /USER/POSTS/REACTED - API ERROR")
+	}
+	defer apiResp.Body.Close()
 
-		post.Comments = comments
+	respBody, err := ioutil.ReadAll(apiResp.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	return &GetAllCommentedPostsResponse{Posts: posts}, nil
+	var posts []*dto.Post
+	if err := json.Unmarshal(respBody, &posts); err != nil {
+		return nil, err
+	}
+
+	return &GetAllReactedPostsResponse{posts}, nil
 }

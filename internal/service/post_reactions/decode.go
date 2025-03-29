@@ -1,7 +1,6 @@
 package post_reactions
 
 import (
-	"github.com/itelman/forum/internal/dto"
 	"github.com/itelman/forum/internal/service/post_reactions/domain"
 	"net/http"
 	"strconv"
@@ -28,7 +27,6 @@ func DecodeCreatePostReaction(r *http.Request) (interface{}, error) {
 
 	return &CreatePostReactionInput{
 		PostID: postId,
-		UserID: dto.GetAuthUser(r).ID,
 		IsLike: isLike,
 	}, nil
 }

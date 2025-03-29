@@ -21,7 +21,6 @@ func (h *handlers) RegisterMux(mux *http.ServeMux) {
 	routes := []dto.Route{
 		{"/user/activity/created", dto.GetMethod, h.getAllCreatedPosts},
 		{"/user/activity/reacted", dto.GetMethod, h.getAllReactedPosts},
-		{"/user/activity/commented", dto.GetMethod, h.getAllCommentedPosts},
 	}
 
 	for _, route := range routes {
@@ -30,9 +29,7 @@ func (h *handlers) RegisterMux(mux *http.ServeMux) {
 }
 
 func (h *handlers) getAllCreatedPosts(w http.ResponseWriter, r *http.Request) {
-	req := activity.DecodeGetAllCreatedPosts(r)
-
-	resp, err := h.activity.GetAllCreatedPosts(req.(*activity.GetAllCreatedPostsInput))
+	resp, err := h.activity.GetAllCreatedPosts(r.Context())
 	if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
@@ -47,26 +44,7 @@ func (h *handlers) getAllCreatedPosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handlers) getAllReactedPosts(w http.ResponseWriter, r *http.Request) {
-	req := activity.DecodeGetAllReactedPosts(r)
-
-	resp, err := h.activity.GetAllReactedPosts(req.(*activity.GetAllReactedPostsInput))
-	if err != nil {
-		h.Exceptions.ErrInternalServerHandler(w, r, err)
-		return
-	}
-
-	if err := h.TmplRender.RenderData(w, r, "activity_page", templates.TemplateData{
-		templates.Posts: resp.Posts,
-	}); err != nil {
-		h.Exceptions.ErrInternalServerHandler(w, r, err)
-		return
-	}
-}
-
-func (h *handlers) getAllCommentedPosts(w http.ResponseWriter, r *http.Request) {
-	req := activity.DecodeGetAllCommentedPosts(r)
-
-	resp, err := h.activity.GetAllCommentedPosts(req.(*activity.GetAllCommentedPostsInput))
+	resp, err := h.activity.GetAllReactedPosts(r.Context())
 	if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return

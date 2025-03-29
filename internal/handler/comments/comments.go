@@ -1,14 +1,11 @@
 package comments
 
 import (
-	"errors"
 	"fmt"
 	"github.com/itelman/forum/internal/dto"
 	"github.com/itelman/forum/internal/handler"
 	"github.com/itelman/forum/internal/handler/comments/middleware"
 	"github.com/itelman/forum/internal/service/comments"
-	"github.com/itelman/forum/internal/service/comments/domain"
-	postDomain "github.com/itelman/forum/internal/service/posts/domain"
 	"github.com/itelman/forum/pkg/templates"
 	"github.com/itelman/forum/pkg/validator"
 	"net/http"
@@ -49,15 +46,7 @@ func (h *handlers) create(w http.ResponseWriter, r *http.Request) {
 
 	input := req.(*comments.CreateCommentInput)
 
-	if err = h.comments.CreateComment(input); errors.Is(err, domain.ErrCommentsBadRequest) {
-		if err := h.SesManager.UpdateSessionFlash(r, dto.FlashCommentEnter); err != nil {
-			h.Exceptions.ErrInternalServerHandler(w, r, err)
-			return
-		}
-	} else if errors.Is(err, postDomain.ErrPostNotFound) {
-		h.Exceptions.ErrNotFoundHandler(w, r)
-		return
-	} else if err != nil {
+	if err = h.comments.CreateComment(r.Context(), input); err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}
@@ -74,7 +63,7 @@ func (h *handlers) delete(w http.ResponseWriter, r *http.Request) {
 
 	comment := middleware.GetCommentFromContext(r)
 
-	if err = h.comments.DeleteComment(req.(*comments.DeleteCommentInput)); err != nil {
+	if err = h.comments.DeleteComment(r.Context(), req.(*comments.DeleteCommentInput)); err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}
@@ -112,17 +101,7 @@ func (h *handlers) edit(w http.ResponseWriter, r *http.Request) {
 	input := req.(*comments.UpdateCommentInput)
 	comment := middleware.GetCommentFromContext(r)
 
-	if err := h.comments.UpdateComment(input, comment); errors.Is(err, domain.ErrCommentsBadRequest) {
-		if err := h.TmplRender.RenderData(w, r, "edit_comment_page", templates.TemplateData{
-			templates.Comment: comment,
-			templates.Form:    validator.NewForm(r.PostForm, input.Errors),
-		}); err != nil {
-			h.Exceptions.ErrInternalServerHandler(w, r, err)
-			return
-		}
-
-		return
-	} else if err != nil {
+	if err := h.comments.UpdateComment(r.Context(), input); err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}

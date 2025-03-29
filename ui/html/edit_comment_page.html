@@ -4,7 +4,7 @@
 
 {{define "body"}}
     {{$comment := .Comment}}
-    <form action="/user/posts/comments/edit?id={{$comment.ID}}" method="post">
+    <form action="/user/posts/comments/edit?id={{$comment.ID}}&post_id={{$comment.PostID}}" method="post">
         {{with .Form}}
 
             {{with .Errors.Get "generic"}}

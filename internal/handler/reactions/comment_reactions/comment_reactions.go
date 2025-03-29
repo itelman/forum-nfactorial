@@ -1,9 +1,7 @@
 package comment_reactions
 
 import (
-	"errors"
 	"fmt"
-	"github.com/itelman/forum/internal/service/comment_reactions/domain"
 	"net/http"
 
 	"github.com/itelman/forum/internal/dto"
@@ -35,14 +33,12 @@ func (h *commentReactionHandlers) create(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	resp, err := h.commentReactions.CreateCommentReaction(req.(*comment_reactions.CreateCommentReactionInput))
-	if errors.Is(err, domain.ErrCommentReactionsBadRequest) {
-		h.Exceptions.ErrBadRequestHandler(w, r)
-		return
-	} else if err != nil {
+	input := req.(*comment_reactions.CreateCommentReactionInput)
+
+	if err := h.commentReactions.CreateCommentReaction(r.Context(), input); err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/posts?id=%d", resp.PostID), http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/posts?id=%d", input.PostID), http.StatusSeeOther)
 }

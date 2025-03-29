@@ -77,24 +77,8 @@ func (h *handlers) create(w http.ResponseWriter, r *http.Request) {
 
 	input := req.(*posts.CreatePostInput)
 
-	resp, err := h.posts.CreatePost(input, h.postImagesDir)
-	if errors.Is(err, domain.ErrPostsBadRequest) {
-		catgRsp, err := h.categories.GetAllCategories()
-		if err != nil {
-			h.Exceptions.ErrInternalServerHandler(w, r, err)
-			return
-		}
-
-		if err := h.TmplRender.RenderData(w, r, "create_page", templates.TemplateData{
-			templates.Form:       validator.NewForm(r.PostForm, input.Errors),
-			templates.Categories: catgRsp.Categories,
-		}); err != nil {
-			h.Exceptions.ErrInternalServerHandler(w, r, err)
-			return
-		}
-
-		return
-	} else if err != nil {
+	resp, err := h.posts.CreatePost(r.Context(), input)
+	if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}
@@ -135,18 +119,12 @@ func (h *handlers) delete(w http.ResponseWriter, r *http.Request) {
 
 	input := req.(*posts.DeletePostInput)
 
-	if err := h.posts.DeletePost(input, h.postImagesDir); errors.Is(err, domain.ErrPostNotFound) {
-		h.Exceptions.ErrNotFoundHandler(w, r)
-		return
-	} else if err != nil {
+	if err := h.posts.DeletePost(r.Context(), input); err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}
 
-	if err := h.SesManager.UpdateSessionFlash(r, dto.FlashPostRemoved); err != nil {
-		h.Exceptions.ErrInternalServerHandler(w, r, err)
-		return
-	}
+	// flash warning
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -182,17 +160,7 @@ func (h *handlers) edit(w http.ResponseWriter, r *http.Request) {
 	input := req.(*posts.UpdatePostInput)
 	post := middleware.GetPostFromContext(r)
 
-	if err := h.posts.UpdatePost(input, post); errors.Is(err, domain.ErrPostsBadRequest) {
-		if err := h.TmplRender.RenderData(w, r, "edit_post_page", templates.TemplateData{
-			templates.Post: post,
-			templates.Form: validator.NewForm(r.PostForm, input.Errors),
-		}); err != nil {
-			h.Exceptions.ErrInternalServerHandler(w, r, err)
-			return
-		}
-
-		return
-	} else if err != nil {
+	if err := h.posts.UpdatePost(r.Context(), input); err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}

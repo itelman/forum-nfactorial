@@ -51,7 +51,7 @@ func (m *middleware) CheckUserPermissions(next http.Handler) http.Handler {
 			return
 		}
 
-		if postResp.Post.User.ID != input.AuthUserID {
+		if postResp.Post.User.ID != dto.GetAuthUser(r).ID {
 			m.exceptions.ErrForbiddenHandler(w, r)
 			return
 		}
