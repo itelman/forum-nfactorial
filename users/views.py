@@ -49,6 +49,15 @@ class LoginView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class UserProfileView(APIView):
+    """Returns the authenticated user's profile details"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class UserCreatedPostsView(APIView):
     """Lists posts created by the authenticated user"""
     permission_classes = [IsAuthenticated]
@@ -64,15 +73,6 @@ class UserReactedPostsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        reacted_posts = Post.objects.filter(reactions__user=request.user).distinct()
+        reacted_posts = Post.objects.filter(reactions__user=request.user)
         serializer = PostSerializer(reacted_posts, many=True, context={"request": request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class UserProfileView(APIView):
-    """Returns the authenticated user's profile details"""
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        serializer = UserSerializer(request.user, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
