@@ -6,11 +6,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/itelman/forum/pkg/requests"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/itelman/forum/internal/dto"
 )
+
+var (
+	ErrUsersBadRequest    = errors.New("USERS: bad request")
+	ErrUsersUnauthorized  = errors.New("USERS: unauthorized")
+	ErrInvalidCredentials = errors.New("DATABASE: Invalid credentials")
+)
+
+func ErrAPIUnhandled(status string) error {
+	return fmt.Errorf("USERS (API): %s", status)
+}
 
 type Service interface {
 	SignupUser(input *SignupUserInput) error
@@ -51,24 +62,22 @@ func (s *service) SignupUser(input *SignupUserInput) error {
 		return err
 	}
 
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodPost,
 		s.userEndpoint+"/signup",
 		bytes.NewBuffer(reqBody),
+		map[string]string{"Content-Type": "application/json"},
 	)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return errors.New("USERS: /SIGNUP - API ERROR")
+	if resp.StatusCode == http.StatusBadRequest {
+		// do smth
+		return ErrUsersBadRequest
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return ErrAPIUnhandled(resp.Status)
 	}
 
 	return nil
@@ -91,26 +100,25 @@ func (s *service) LoginUser(input *LoginUserInput) (*LoginUserResponse, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest(
+	apiResp, err := requests.SendRequest(
 		http.MethodPost,
 		s.userEndpoint+"/login",
 		bytes.NewBuffer(reqBody),
+		map[string]string{"Content-Type": "application/json"},
 	)
 	if err != nil {
 		return nil, err
 	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	if apiResp.StatusCode != http.StatusOK {
-		return nil, errors.New("USERS: /LOGIN - API ERROR")
-	}
 	defer apiResp.Body.Close()
+
+	if apiResp.StatusCode == http.StatusBadRequest {
+		// do smth
+		return nil, ErrUsersBadRequest
+	} else if apiResp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrInvalidCredentials
+	} else if !(apiResp.StatusCode >= http.StatusOK && apiResp.StatusCode < http.StatusMultipleChoices) {
+		return nil, ErrAPIUnhandled(apiResp.Status)
+	}
 
 	respBody, err := ioutil.ReadAll(apiResp.Body)
 	if err != nil {
@@ -130,28 +138,24 @@ type GetAuthUserResponse struct {
 }
 
 func (s *service) GetAuthUser(ctx context.Context) (*GetAuthUserResponse, error) {
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodGet,
 		s.userEndpoint+"/me",
 		nil,
+		map[string]string{"Authorization": fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx))},
 	)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
-
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrUsersUnauthorized
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return nil, ErrAPIUnhandled(resp.Status)
 	}
 
-	if apiResp.StatusCode != http.StatusOK {
-		return nil, errors.New("USERS: /ME - API ERROR")
-	}
-	defer apiResp.Body.Close()
-
-	respBody, err := ioutil.ReadAll(apiResp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

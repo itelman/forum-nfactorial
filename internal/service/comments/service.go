@@ -7,9 +7,22 @@ import (
 	"errors"
 	"fmt"
 	"github.com/itelman/forum/internal/dto"
+	"github.com/itelman/forum/pkg/requests"
 	"io/ioutil"
 	"net/http"
 )
+
+var (
+	ErrCommentsBadRequest       = errors.New("COMMENTS: bad request")
+	ErrCommentsUserUnauthorized = errors.New("COMMENTS: user unauthorized")
+	ErrCommentsForbidden        = errors.New("COMMENTS: forbidden")
+	ErrCommentNotFound          = errors.New("DATABASE: Comment not found")
+	ErrPostNotFound             = errors.New("DATABASE: Post not found")
+)
+
+func ErrAPIUnhandled(status string) error {
+	return fmt.Errorf("COMMENTS (API): %s", status)
+}
 
 type Service interface {
 	CreateComment(ctx context.Context, input *CreateCommentInput) error
@@ -54,25 +67,29 @@ func (s *service) CreateComment(ctx context.Context, input *CreateCommentInput) 
 		return err
 	}
 
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodPost,
 		fmt.Sprintf("%s/%d/comments", s.postsEndpoint, input.PostID),
 		bytes.NewBuffer(reqBody),
+		map[string]string{
+			"Content-Type":  "application/json",
+			"Authorization": fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)),
+		},
 	)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
-
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	if apiResp.StatusCode != http.StatusOK {
-		return errors.New("COMMENTS: /CREATE - API ERROR")
+	if resp.StatusCode == http.StatusBadRequest {
+		// do smth
+		return ErrCommentsBadRequest
+	} else if resp.StatusCode == http.StatusUnauthorized {
+		return ErrCommentsUserUnauthorized
+	} else if resp.StatusCode == http.StatusNotFound {
+		return ErrPostNotFound
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return ErrAPIUnhandled(resp.Status)
 	}
 
 	return nil
@@ -88,26 +105,24 @@ type GetCommentResponse struct {
 }
 
 func (s *service) GetComment(input *GetCommentInput) (*GetCommentResponse, error) {
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodGet,
 		fmt.Sprintf("%s/%d/comments/%d", s.postsEndpoint, input.PostID, input.ID),
+		nil,
 		nil,
 	)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, ErrCommentNotFound
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return nil, ErrAPIUnhandled(resp.Status)
 	}
 
-	if apiResp.StatusCode != http.StatusOK {
-		return nil, errors.New("COMMENTS: /GET - API ERROR")
-	}
-	defer apiResp.Body.Close()
-
-	respBody, err := ioutil.ReadAll(apiResp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -136,25 +151,31 @@ func (s *service) UpdateComment(ctx context.Context, input *UpdateCommentInput) 
 		return err
 	}
 
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodPut,
 		fmt.Sprintf("%s/%d/comments/%d", s.postsEndpoint, input.PostID, input.ID),
 		bytes.NewBuffer(reqBody),
+		map[string]string{
+			"Content-Type":  "application/json",
+			"Authorization": fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)),
+		},
 	)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
-
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	if apiResp.StatusCode != http.StatusOK {
-		return errors.New("COMMENTS: /UPDATE - API ERROR")
+	if resp.StatusCode == http.StatusBadRequest {
+		// do smth
+		return ErrCommentsBadRequest
+	} else if resp.StatusCode == http.StatusUnauthorized {
+		return ErrCommentsUserUnauthorized
+	} else if resp.StatusCode == http.StatusForbidden {
+		return ErrCommentsForbidden
+	} else if resp.StatusCode == http.StatusNotFound {
+		return ErrCommentNotFound
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return ErrAPIUnhandled(resp.Status)
 	}
 
 	return nil
@@ -166,24 +187,27 @@ type DeleteCommentInput struct {
 }
 
 func (s *service) DeleteComment(ctx context.Context, input *DeleteCommentInput) error {
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodDelete,
 		fmt.Sprintf("%s/%d/comments/%d", s.postsEndpoint, input.PostID, input.ID),
 		nil,
+		map[string]string{
+			"Authorization": fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)),
+		},
 	)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
-
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	if apiResp.StatusCode != http.StatusOK {
-		return errors.New("COMMENTS: /DELETE - API ERROR")
+	if resp.StatusCode == http.StatusUnauthorized {
+		return ErrCommentsUserUnauthorized
+	} else if resp.StatusCode == http.StatusForbidden {
+		return ErrCommentsForbidden
+	} else if resp.StatusCode == http.StatusNotFound {
+		return ErrCommentNotFound
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return ErrAPIUnhandled(resp.Status)
 	}
 
 	return nil

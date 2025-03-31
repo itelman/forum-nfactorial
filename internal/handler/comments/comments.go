@@ -1,6 +1,7 @@
 package comments
 
 import (
+	"errors"
 	"fmt"
 	"github.com/itelman/forum/internal/dto"
 	"github.com/itelman/forum/internal/handler"
@@ -46,7 +47,12 @@ func (h *handlers) create(w http.ResponseWriter, r *http.Request) {
 
 	input := req.(*comments.CreateCommentInput)
 
-	if err = h.comments.CreateComment(r.Context(), input); err != nil {
+	if err = h.comments.CreateComment(r.Context(), input); errors.Is(err, comments.ErrCommentsBadRequest) {
+		h.FlashManager.UpdateFlash(dto.FlashCommentEnter)
+	} else if errors.Is(err, comments.ErrPostNotFound) {
+		h.Exceptions.ErrNotFoundHandler(w, r)
+		return
+	} else if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}
@@ -101,7 +107,9 @@ func (h *handlers) edit(w http.ResponseWriter, r *http.Request) {
 	input := req.(*comments.UpdateCommentInput)
 	comment := middleware.GetCommentFromContext(r)
 
-	if err := h.comments.UpdateComment(r.Context(), input); err != nil {
+	if err := h.comments.UpdateComment(r.Context(), input); errors.Is(err, comments.ErrCommentsBadRequest) {
+		// do smth
+	} else if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}

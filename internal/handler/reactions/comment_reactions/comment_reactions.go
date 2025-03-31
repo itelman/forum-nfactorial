@@ -1,6 +1,7 @@
 package comment_reactions
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -35,7 +36,10 @@ func (h *commentReactionHandlers) create(w http.ResponseWriter, r *http.Request)
 
 	input := req.(*comment_reactions.CreateCommentReactionInput)
 
-	if err := h.commentReactions.CreateCommentReaction(r.Context(), input); err != nil {
+	if err := h.commentReactions.CreateCommentReaction(r.Context(), input); errors.Is(err, comment_reactions.ErrCommentReactionsBadRequest) {
+		h.Exceptions.ErrBadRequestHandler(w, r)
+		return
+	} else if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}

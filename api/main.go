@@ -68,16 +68,16 @@ func main() {
 		errorLog.Fatal(err)
 	}
 
-	tmplRender := templates.NewTemplateRender(deps.templateCache)
+	tmplRender := templates.NewTemplateRender(deps.templateCache, deps.flashManager)
 	exceptionHandlers := exception.NewExceptions(errorLog, tmplRender)
 
 	usersSvc := users.NewService(
 		users.WithAPI(conf.ApiLink),
 	)
 
-	authMid := authMiddleware.NewMiddleware(usersSvc, exceptionHandlers)
+	authMid := authMiddleware.NewMiddleware(usersSvc, exceptionHandlers, deps.flashManager)
 	dynamicMiddleware := dynamic.NewMiddleware(authMid, exceptionHandlers)
-	defaultHandlers := handler.NewHandlers(dynamicMiddleware, exceptionHandlers, tmplRender)
+	defaultHandlers := handler.NewHandlers(dynamicMiddleware, exceptionHandlers, tmplRender, deps.flashManager)
 
 	postsSvc := posts.NewService(
 		posts.WithAPI(conf.ApiLink),

@@ -1,19 +1,18 @@
 package comments
 
 import (
-	"github.com/itelman/forum/internal/service/comments/domain"
 	"net/http"
 	"strconv"
 )
 
 func DecodeCreateComment(r *http.Request) (interface{}, error) {
 	if err := r.ParseForm(); err != nil {
-		return nil, domain.ErrCommentsBadRequest
+		return nil, ErrCommentsBadRequest
 	}
 
 	postId, err := strconv.Atoi(r.PostForm.Get("post_id"))
 	if err != nil {
-		return nil, domain.ErrCommentsBadRequest
+		return nil, ErrCommentsBadRequest
 	}
 
 	return &CreateCommentInput{
@@ -25,12 +24,12 @@ func DecodeCreateComment(r *http.Request) (interface{}, error) {
 func DecodeGetComment(r *http.Request) (interface{}, error) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
-		return nil, domain.ErrCommentsBadRequest
+		return nil, ErrCommentsBadRequest
 	}
 
 	postId, err := strconv.Atoi(r.URL.Query().Get("post_id"))
 	if err != nil {
-		return nil, domain.ErrCommentsBadRequest
+		return nil, ErrCommentsBadRequest
 	}
 
 	return &GetCommentInput{
@@ -42,16 +41,16 @@ func DecodeGetComment(r *http.Request) (interface{}, error) {
 func DecodeUpdateComment(r *http.Request) (interface{}, error) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
-		return nil, domain.ErrCommentsBadRequest
+		return nil, ErrCommentsBadRequest
 	}
 
 	postId, err := strconv.Atoi(r.URL.Query().Get("post_id"))
 	if err != nil {
-		return nil, domain.ErrCommentsBadRequest
+		return nil, ErrCommentsBadRequest
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return nil, domain.ErrCommentsBadRequest
+		return nil, ErrCommentsBadRequest
 	}
 
 	return &UpdateCommentInput{
@@ -64,12 +63,12 @@ func DecodeUpdateComment(r *http.Request) (interface{}, error) {
 func DecodeDeleteComment(r *http.Request) (interface{}, error) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
-		return nil, domain.ErrCommentsBadRequest
+		return nil, ErrCommentsBadRequest
 	}
 
 	postId, err := strconv.Atoi(r.URL.Query().Get("post_id"))
 	if err != nil {
-		return nil, domain.ErrCommentsBadRequest
+		return nil, ErrCommentsBadRequest
 	}
 
 	return &DeleteCommentInput{

@@ -2,10 +2,12 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"github.com/itelman/forum/internal/dto"
 	"github.com/itelman/forum/internal/exception"
 	"github.com/itelman/forum/internal/service/users"
 	"github.com/itelman/forum/pkg/encoder"
+	"github.com/itelman/forum/pkg/flash"
 	"net/http"
 )
 
@@ -14,14 +16,16 @@ type AuthMiddleware interface {
 }
 
 type middleware struct {
-	users      users.Service
-	exceptions exception.Exceptions
+	users        users.Service
+	exceptions   exception.Exceptions
+	flashManager flash.FlashManager
 }
 
-func NewMiddleware(users users.Service, exceptions exception.Exceptions) *middleware {
+func NewMiddleware(users users.Service, exceptions exception.Exceptions, flashManager flash.FlashManager) *middleware {
 	return &middleware{
-		users:      users,
-		exceptions: exceptions,
+		users:        users,
+		exceptions:   exceptions,
+		flashManager: flashManager,
 	}
 }
 
@@ -47,7 +51,12 @@ func (m *middleware) Authenticate(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), dto.ContextKeyToken, accessToken)
 
 		resp, err := m.users.GetAuthUser(ctx)
-		if err != nil {
+		if errors.Is(err, users.ErrUsersUnauthorized) {
+			m.flashManager.UpdateFlash(dto.FlashSessionExpired)
+			http.SetCookie(w, dto.DeleteCookie(dto.TokenEncode))
+			next.ServeHTTP(w, r)
+			return
+		} else if err != nil {
 			errInternalSrvResp(err)
 			return
 		}

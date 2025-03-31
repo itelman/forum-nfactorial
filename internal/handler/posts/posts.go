@@ -8,7 +8,6 @@ import (
 	"github.com/itelman/forum/internal/handler/posts/middleware"
 	"github.com/itelman/forum/internal/service/categories"
 	"github.com/itelman/forum/internal/service/posts"
-	"github.com/itelman/forum/internal/service/posts/domain"
 	"github.com/itelman/forum/pkg/templates"
 	"github.com/itelman/forum/pkg/validator"
 	"net/http"
@@ -67,7 +66,7 @@ func (h *handlers) createForm(w http.ResponseWriter, r *http.Request) {
 
 func (h *handlers) create(w http.ResponseWriter, r *http.Request) {
 	req, err := posts.DecodeCreatePost(r)
-	if errors.Is(err, domain.ErrPostsBadRequest) {
+	if errors.Is(err, posts.ErrPostsBadRequest) {
 		h.Exceptions.ErrBadRequestHandler(w, r)
 		return
 	} else if err != nil {
@@ -78,7 +77,9 @@ func (h *handlers) create(w http.ResponseWriter, r *http.Request) {
 	input := req.(*posts.CreatePostInput)
 
 	resp, err := h.posts.CreatePost(r.Context(), input)
-	if err != nil {
+	if errors.Is(err, posts.ErrPostsBadRequest) {
+		// do smth
+	} else if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}
@@ -93,8 +94,8 @@ func (h *handlers) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	postResp, err := h.posts.GetPost(postReq.(*posts.GetPostInput))
-	if errors.Is(err, domain.ErrPostNotFound) {
+	postResp, err := h.posts.GetPost(r.Context(), postReq.(*posts.GetPostInput))
+	if errors.Is(err, posts.ErrPostNotFound) {
 		h.Exceptions.ErrNotFoundHandler(w, r)
 		return
 	} else if err != nil {
@@ -124,7 +125,7 @@ func (h *handlers) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// flash warning
+	h.FlashManager.UpdateFlash(dto.FlashPostRemoved)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -160,7 +161,9 @@ func (h *handlers) edit(w http.ResponseWriter, r *http.Request) {
 	input := req.(*posts.UpdatePostInput)
 	post := middleware.GetPostFromContext(r)
 
-	if err := h.posts.UpdatePost(r.Context(), input); err != nil {
+	if err := h.posts.UpdatePost(r.Context(), input); errors.Is(err, posts.ErrPostsBadRequest) {
+		// do smth
+	} else if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}

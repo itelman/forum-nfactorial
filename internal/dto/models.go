@@ -40,19 +40,3 @@ type Category struct {
 	Name    string    `json:"name"`
 	Created time.Time `json:"created"`
 }
-
-type PostReaction struct {
-	ID      int
-	PostID  int
-	User    *User
-	IsLike  int
-	Created time.Time
-}
-
-type CommentReaction struct {
-	ID        int
-	CommentID int
-	User      *User
-	IsLike    int
-	Created   time.Time
-}

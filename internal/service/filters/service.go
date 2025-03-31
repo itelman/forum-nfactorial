@@ -5,9 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"github.com/itelman/forum/internal/dto"
+	"github.com/itelman/forum/pkg/requests"
 	"io/ioutil"
 	"net/http"
 )
+
+var (
+	ErrFiltersBadRequest = errors.New("FILTERS: bad request")
+)
+
+func ErrAPIUnhandled(status string) error {
+	return fmt.Errorf("FILTERS (API): %s", status)
+}
 
 type Service interface {
 	GetPostsByCategories(input *GetPostsByCategoriesInput) (*GetPostsByCategoriesResponse, error)
@@ -43,26 +52,24 @@ type GetPostsByCategoriesResponse struct {
 }
 
 func (s *service) GetPostsByCategories(input *GetPostsByCategoriesInput) (*GetPostsByCategoriesResponse, error) {
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodGet,
 		fmt.Sprintf("%s/%d/posts", s.categoriesEndpoint, input.CategoryID),
+		nil,
 		nil,
 	)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, ErrFiltersBadRequest
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return nil, ErrAPIUnhandled(resp.Status)
 	}
 
-	if apiResp.StatusCode != http.StatusOK {
-		return nil, errors.New("FILTERS: /{CATG_ID}/POSTS - API ERROR")
-	}
-	defer apiResp.Body.Close()
-
-	respBody, err := ioutil.ReadAll(apiResp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

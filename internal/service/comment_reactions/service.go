@@ -7,8 +7,19 @@ import (
 	"errors"
 	"fmt"
 	"github.com/itelman/forum/internal/dto"
+	"github.com/itelman/forum/pkg/requests"
 	"net/http"
 )
+
+var (
+	ErrCommentNotFound                  = errors.New("DATABASE: Comment not found")
+	ErrCommentReactionsBadRequest       = errors.New("COMMENT REACTIONS: bad request")
+	ErrCommentReactionsUserUnauthorized = errors.New("COMMENT REACTIONS: user unauthorized")
+)
+
+func ErrAPIUnhandled(status string) error {
+	return fmt.Errorf("COMMENT REACTIONS (API): %s", status)
+}
 
 type Service interface {
 	CreateCommentReaction(ctx context.Context, input *CreateCommentReactionInput) error
@@ -51,25 +62,26 @@ func (s *service) CreateCommentReaction(ctx context.Context, input *CreateCommen
 		return err
 	}
 
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodPost,
 		fmt.Sprintf("%s/%d/comments/%d/react", s.postsEndpoint, input.PostID, input.CommentID),
 		bytes.NewBuffer(reqBody),
+		map[string]string{
+			"Content-Type":  "application/json",
+			"Authorization": fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)),
+		},
 	)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
-
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	if apiResp.StatusCode != http.StatusOK {
-		return errors.New("COMMENT REACTIONS: /CREATE - API ERROR")
+	if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusNotFound {
+		return ErrCommentReactionsBadRequest
+	} else if resp.StatusCode == http.StatusUnauthorized {
+		return ErrCommentReactionsUserUnauthorized
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return ErrAPIUnhandled(resp.Status)
 	}
 
 	return nil

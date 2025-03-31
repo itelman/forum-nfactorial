@@ -2,11 +2,14 @@ package requests
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 )
 
-func SendRequestGetResp(method string, url string, reqBody *bytes.Buffer, headersMap map[string]string) (*http.Response, error) {
+func SendRequest(method, url string, reqBody *bytes.Buffer, headers map[string]string) (*http.Response, error) {
+	if reqBody == nil {
+		reqBody = &bytes.Buffer{} // Empty buffer to prevent nil dereference
+	}
+
 	req, err := http.NewRequest(
 		method,
 		url,
@@ -16,17 +19,15 @@ func SendRequestGetResp(method string, url string, reqBody *bytes.Buffer, header
 		return nil, err
 	}
 
-	for key, value := range headersMap {
-		req.Header.Set(key, value)
+	if headers != nil {
+		for key, value := range headers {
+			req.Header.Set(key, value)
+		}
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
-	}
-
-	if !(resp.StatusCode >= http.StatusOK && resp.StatusCode <= http.StatusIMUsed) {
-		return nil, fmt.Errorf("response status: %d", resp.StatusCode)
 	}
 
 	return resp, nil

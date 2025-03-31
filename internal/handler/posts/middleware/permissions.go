@@ -6,7 +6,6 @@ import (
 	"github.com/itelman/forum/internal/dto"
 	"github.com/itelman/forum/internal/exception"
 	"github.com/itelman/forum/internal/service/posts"
-	"github.com/itelman/forum/internal/service/posts/domain"
 	"net/http"
 )
 
@@ -42,8 +41,8 @@ func (m *middleware) CheckUserPermissions(next http.Handler) http.Handler {
 
 		input := postReq.(*posts.GetPostInput)
 
-		postResp, err := m.posts.GetPost(input)
-		if errors.Is(err, domain.ErrPostNotFound) {
+		postResp, err := m.posts.GetPost(r.Context(), input)
+		if errors.Is(err, posts.ErrPostNotFound) {
 			m.exceptions.ErrNotFoundHandler(w, r)
 			return
 		} else if err != nil {

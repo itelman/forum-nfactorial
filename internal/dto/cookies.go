@@ -10,7 +10,7 @@ var (
 	FlashSessionExpired   = "Your session has expired. Please sign in again."
 	FlashPostRemoved      = "Post successfully removed!"
 	FlashCommentEnter     = "Please enter a valid comment."
-	FlashFilterSelect     = "Please select at least one filter."
+	FlashFilterSelect     = "Please select at least one provided filter."
 )
 
 const (

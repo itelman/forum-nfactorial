@@ -6,7 +6,6 @@ import (
 	"github.com/itelman/forum/internal/dto"
 	"github.com/itelman/forum/internal/exception"
 	"github.com/itelman/forum/internal/service/comments"
-	"github.com/itelman/forum/internal/service/comments/domain"
 	"net/http"
 )
 
@@ -41,7 +40,7 @@ func (m *middleware) CheckUserPermissions(next http.Handler) http.Handler {
 		}
 
 		commResp, err := m.comments.GetComment(commReq.(*comments.GetCommentInput))
-		if errors.Is(err, domain.ErrCommentNotFound) {
+		if errors.Is(err, comments.ErrCommentNotFound) {
 			m.exceptions.ErrNotFoundHandler(w, r)
 			return
 		} else if err != nil {

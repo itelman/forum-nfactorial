@@ -1,6 +1,7 @@
 package users
 
 import (
+	"errors"
 	"github.com/itelman/forum/internal/dto"
 	"github.com/itelman/forum/internal/handler"
 	"github.com/itelman/forum/internal/service/users"
@@ -56,12 +57,15 @@ func (h *handlers) signupPost(w http.ResponseWriter, r *http.Request) {
 
 	input := req.(*users.SignupUserInput)
 
-	if err := h.users.SignupUser(input); err != nil {
+	if err := h.users.SignupUser(input); errors.Is(err, users.ErrUsersBadRequest) {
+		// do smth
+	} else if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}
 
-	// flash warning
+	h.FlashManager.UpdateFlash(dto.FlashSignupSuccessful)
+
 	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 }
 
@@ -89,7 +93,11 @@ func (h *handlers) loginPost(w http.ResponseWriter, r *http.Request) {
 	input := req.(*users.LoginUserInput)
 
 	resp, err := h.users.LoginUser(input)
-	if err != nil {
+	if errors.Is(err, users.ErrUsersBadRequest) {
+		// do smth
+	} else if errors.Is(err, users.ErrInvalidCredentials) {
+		//
+	} else if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}

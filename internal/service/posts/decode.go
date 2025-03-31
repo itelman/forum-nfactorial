@@ -1,14 +1,13 @@
 package posts
 
 import (
-	"github.com/itelman/forum/internal/service/posts/domain"
 	"net/http"
 	"strconv"
 )
 
 func DecodeCreatePost(r *http.Request) (interface{}, error) {
 	if err := r.ParseForm(); err != nil {
-		return nil, domain.ErrPostsBadRequest
+		return nil, ErrPostsBadRequest
 	}
 
 	return &CreatePostInput{
@@ -21,7 +20,7 @@ func DecodeCreatePost(r *http.Request) (interface{}, error) {
 func DecodeGetPost(r *http.Request) (interface{}, error) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
-		return nil, domain.ErrPostsBadRequest
+		return nil, ErrPostsBadRequest
 	}
 
 	return &GetPostInput{
@@ -32,11 +31,11 @@ func DecodeGetPost(r *http.Request) (interface{}, error) {
 func DecodeUpdatePost(r *http.Request) (interface{}, error) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
-		return nil, domain.ErrPostsBadRequest
+		return nil, ErrPostsBadRequest
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return nil, domain.ErrPostsBadRequest
+		return nil, ErrPostsBadRequest
 	}
 
 	return &UpdatePostInput{
@@ -49,7 +48,7 @@ func DecodeUpdatePost(r *http.Request) (interface{}, error) {
 func DecodeDeletePost(r *http.Request) (interface{}, error) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
-		return nil, domain.ErrPostsBadRequest
+		return nil, ErrPostsBadRequest
 	}
 
 	return &DeletePostInput{

@@ -1,6 +1,7 @@
 package post_reactions
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -35,7 +36,10 @@ func (h *postReactionHandlers) create(w http.ResponseWriter, r *http.Request) {
 
 	input := req.(*post_reactions.CreatePostReactionInput)
 
-	if err := h.postReactions.CreatePostReaction(r.Context(), input); err != nil {
+	if err := h.postReactions.CreatePostReaction(r.Context(), input); errors.Is(err, post_reactions.ErrPostReactionsBadRequest) {
+		h.Exceptions.ErrBadRequestHandler(w, r)
+		return
+	} else if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}

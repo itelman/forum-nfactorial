@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/itelman/forum/internal/dto"
+	"github.com/itelman/forum/pkg/flash"
 	"net/http"
 	"time"
 )
@@ -17,8 +18,6 @@ const (
 	Posts             = "Posts"
 	Post              = "Post"
 	Categories        = "Categories"
-	Comments          = "Comments"
-	PostReactions     = "PostReactions"
 	Comment           = "Comment"
 )
 
@@ -30,10 +29,11 @@ type TemplateRender interface {
 
 type templateRender struct {
 	templateCache TemplateCache
+	flashManager  flash.FlashManager
 }
 
-func NewTemplateRender(templateCache TemplateCache) *templateRender {
-	return &templateRender{templateCache: templateCache}
+func NewTemplateRender(templateCache TemplateCache, flashManager flash.FlashManager) *templateRender {
+	return &templateRender{templateCache: templateCache, flashManager: flashManager}
 }
 
 func (tr *templateRender) RenderData(w http.ResponseWriter, r *http.Request, tmplName string, td TemplateData) error {
@@ -43,6 +43,8 @@ func (tr *templateRender) RenderData(w http.ResponseWriter, r *http.Request, tmp
 	}
 
 	addDefaultData(r, td)
+
+	td[Flash] = tr.flashManager.PopFlash()
 
 	buf := new(bytes.Buffer)
 	err := ts.Execute(buf, td)

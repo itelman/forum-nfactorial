@@ -7,13 +7,25 @@ import (
 	"errors"
 	"fmt"
 	"github.com/itelman/forum/internal/dto"
+	"github.com/itelman/forum/pkg/requests"
 	"io/ioutil"
 	"net/http"
 )
 
+var (
+	ErrPostsBadRequest       = errors.New("POSTS: bad request")
+	ErrPostsUserUnauthorized = errors.New("POSTS: user unauthorized")
+	ErrPostsForbidden        = errors.New("POSTS: forbidden")
+	ErrPostNotFound          = errors.New("DATABASE: Post not found")
+)
+
+func ErrAPIUnhandled(status string) error {
+	return fmt.Errorf("POSTS (API): %s", status)
+}
+
 type Service interface {
 	CreatePost(ctx context.Context, input *CreatePostInput) (*CreatePostResponse, error)
-	GetPost(input *GetPostInput) (*GetPostResponse, error)
+	GetPost(ctx context.Context, input *GetPostInput) (*GetPostResponse, error)
 	GetAllLatestPosts() (*GetAllPostsResponse, error)
 	UpdatePost(ctx context.Context, input *UpdatePostInput) error
 	DeletePost(ctx context.Context, input *DeletePostInput) error
@@ -56,29 +68,30 @@ func (s *service) CreatePost(ctx context.Context, input *CreatePostInput) (*Crea
 		return nil, err
 	}
 
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodPost,
 		s.postsEndpoint,
 		bytes.NewBuffer(reqBody),
+		map[string]string{
+			"Content-Type":  "application/json",
+			"Authorization": fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)),
+		},
 	)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
-
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
+	if resp.StatusCode == http.StatusBadRequest {
+		// do smth
+		return nil, ErrPostsBadRequest
+	} else if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrPostsUserUnauthorized
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return nil, ErrAPIUnhandled(resp.Status)
 	}
 
-	if apiResp.StatusCode != http.StatusOK {
-		return nil, errors.New("POSTS: /CREATE - API ERROR")
-	}
-	defer apiResp.Body.Close()
-
-	respBody, err := ioutil.ReadAll(apiResp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -99,27 +112,32 @@ type GetPostResponse struct {
 	Post *dto.Post
 }
 
-func (s *service) GetPost(input *GetPostInput) (*GetPostResponse, error) {
-	req, err := http.NewRequest(
+func (s *service) GetPost(ctx context.Context, input *GetPostInput) (*GetPostResponse, error) {
+	var headers map[string]string = nil
+	if dto.GetAccessToken(ctx) != "" {
+		headers = map[string]string{
+			"Authorization": fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)),
+		}
+	}
+
+	resp, err := requests.SendRequest(
 		http.MethodGet,
 		fmt.Sprintf("%s/%d", s.postsEndpoint, input.ID),
 		nil,
+		headers,
 	)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, ErrPostNotFound
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return nil, ErrAPIUnhandled(resp.Status)
 	}
 
-	if apiResp.StatusCode != http.StatusOK {
-		return nil, errors.New("POSTS: /GET - API ERROR")
-	}
-	defer apiResp.Body.Close()
-
-	respBody, err := ioutil.ReadAll(apiResp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -137,26 +155,22 @@ type GetAllPostsResponse struct {
 }
 
 func (s *service) GetAllLatestPosts() (*GetAllPostsResponse, error) {
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodGet,
 		s.postsEndpoint,
+		nil,
 		nil,
 	)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
+	if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return nil, ErrAPIUnhandled(resp.Status)
 	}
 
-	if apiResp.StatusCode != http.StatusOK {
-		return nil, errors.New("POSTS: /LIST - API ERROR")
-	}
-	defer apiResp.Body.Close()
-
-	respBody, err := ioutil.ReadAll(apiResp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -186,25 +200,31 @@ func (s *service) UpdatePost(ctx context.Context, input *UpdatePostInput) error 
 		return err
 	}
 
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodPut,
 		fmt.Sprintf("%s/%d", s.postsEndpoint, input.ID),
 		bytes.NewBuffer(reqBody),
+		map[string]string{
+			"Content-Type":  "application/json",
+			"Authorization": fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)),
+		},
 	)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
-
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	if apiResp.StatusCode != http.StatusOK {
-		return errors.New("POSTS: /UPDATE - API ERROR")
+	if resp.StatusCode == http.StatusBadRequest {
+		// do smth
+		return ErrPostsBadRequest
+	} else if resp.StatusCode == http.StatusUnauthorized {
+		return ErrPostsUserUnauthorized
+	} else if resp.StatusCode == http.StatusForbidden {
+		return ErrPostsForbidden
+	} else if resp.StatusCode == http.StatusNotFound {
+		return ErrPostNotFound
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return ErrAPIUnhandled(resp.Status)
 	}
 
 	return nil
@@ -215,24 +235,27 @@ type DeletePostInput struct {
 }
 
 func (s *service) DeletePost(ctx context.Context, input *DeletePostInput) error {
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodDelete,
 		fmt.Sprintf("%s/%d", s.postsEndpoint, input.ID),
 		nil,
+		map[string]string{
+			"Authorization": fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)),
+		},
 	)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
-
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	if apiResp.StatusCode != http.StatusOK {
-		return errors.New("POSTS: /DELETE - API ERROR")
+	if resp.StatusCode == http.StatusUnauthorized {
+		return ErrPostsUserUnauthorized
+	} else if resp.StatusCode == http.StatusForbidden {
+		return ErrPostsForbidden
+	} else if resp.StatusCode == http.StatusNotFound {
+		return ErrPostNotFound
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return ErrAPIUnhandled(resp.Status)
 	}
 
 	return nil

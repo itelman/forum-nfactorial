@@ -7,8 +7,19 @@ import (
 	"errors"
 	"fmt"
 	"github.com/itelman/forum/internal/dto"
+	"github.com/itelman/forum/pkg/requests"
 	"net/http"
 )
+
+var (
+	ErrPostNotFound                  = errors.New("DATABASE: Post not found")
+	ErrPostReactionsBadRequest       = errors.New("POST REACTIONS: bad request")
+	ErrPostReactionsUserUnauthorized = errors.New("POST REACTIONS: user unauthorized")
+)
+
+func ErrAPIUnhandled(status string) error {
+	return fmt.Errorf("POST REACTIONS (API): %s", status)
+}
 
 type Service interface {
 	CreatePostReaction(ctx context.Context, input *CreatePostReactionInput) error
@@ -50,25 +61,26 @@ func (s *service) CreatePostReaction(ctx context.Context, input *CreatePostReact
 		return err
 	}
 
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodPost,
 		fmt.Sprintf("%s/%d/react", s.postsEndpoint, input.PostID),
 		bytes.NewBuffer(reqBody),
+		map[string]string{
+			"Content-Type":  "application/json",
+			"Authorization": fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)),
+		},
 	)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
-
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	if apiResp.StatusCode != http.StatusOK {
-		return errors.New("POST REACTIONS: /CREATE - API ERROR")
+	if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusNotFound {
+		return ErrPostReactionsBadRequest
+	} else if resp.StatusCode == http.StatusUnauthorized {
+		return ErrPostReactionsUserUnauthorized
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return ErrAPIUnhandled(resp.Status)
 	}
 
 	return nil

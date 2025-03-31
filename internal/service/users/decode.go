@@ -1,13 +1,12 @@
 package users
 
 import (
-	"github.com/itelman/forum/internal/service/users/domain"
 	"net/http"
 )
 
 func DecodeSignupUser(r *http.Request) (interface{}, error) {
 	if err := r.ParseForm(); err != nil {
-		return nil, domain.ErrUsersBadRequest
+		return nil, ErrUsersBadRequest
 	}
 
 	return &SignupUserInput{
@@ -19,7 +18,7 @@ func DecodeSignupUser(r *http.Request) (interface{}, error) {
 
 func DecodeLoginUser(r *http.Request) (interface{}, error) {
 	if err := r.ParseForm(); err != nil {
-		return nil, domain.ErrUsersBadRequest
+		return nil, ErrUsersBadRequest
 	}
 
 	return &LoginUserInput{

@@ -1,11 +1,13 @@
 package main
 
 import (
+	"github.com/itelman/forum/pkg/flash"
 	"github.com/itelman/forum/pkg/templates"
 )
 
 type Dependencies struct {
 	templateCache templates.TemplateCache
+	flashManager  flash.FlashManager
 }
 
 func NewDependencies(opts ...Option) (deps *Dependencies, err error) {
@@ -15,6 +17,8 @@ func NewDependencies(opts ...Option) (deps *Dependencies, err error) {
 			return nil, err
 		}
 	}
+
+	deps.flashManager = flash.NewFlashManager()
 
 	return deps, nil
 }

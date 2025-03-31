@@ -1,6 +1,7 @@
 package home
 
 import (
+	"errors"
 	"github.com/itelman/forum/internal/dto"
 	"github.com/itelman/forum/internal/handler"
 	"github.com/itelman/forum/internal/service/categories"
@@ -59,14 +60,19 @@ func (h *handlers) home(w http.ResponseWriter, r *http.Request) {
 func (h *handlers) results(w http.ResponseWriter, r *http.Request) {
 	req, err := filters.DecodeGetPostsByCategories(r)
 	if err != nil {
-		h.Exceptions.ErrBadRequestHandler(w, r)
+		h.FlashManager.UpdateFlash(dto.FlashFilterSelect)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
 	input := req.(*filters.GetPostsByCategoriesInput)
 
 	filtersResp, err := h.filters.GetPostsByCategories(input)
-	if err != nil {
+	if errors.Is(err, filters.ErrFiltersBadRequest) {
+		h.FlashManager.UpdateFlash(dto.FlashFilterSelect)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	} else if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
 	}

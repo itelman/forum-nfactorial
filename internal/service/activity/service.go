@@ -5,11 +5,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/itelman/forum/pkg/requests"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/itelman/forum/internal/dto"
 )
+
+var (
+	ErrActivityUserUnauthorized = errors.New("ACTIVITY: user unauthorized")
+)
+
+func ErrAPIUnhandled(status string) error {
+	return fmt.Errorf("ACTIVITY (API): %s", status)
+}
 
 type Service interface {
 	GetAllCreatedPosts(ctx context.Context) (*GetAllCreatedPostsResponse, error)
@@ -42,28 +51,26 @@ type GetAllCreatedPostsResponse struct {
 }
 
 func (s *service) GetAllCreatedPosts(ctx context.Context) (*GetAllCreatedPostsResponse, error) {
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodGet,
 		s.userPostsEndpoint+"/created",
 		nil,
+		map[string]string{
+			"Authorization": fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)),
+		},
 	)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
-
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrActivityUserUnauthorized
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return nil, ErrAPIUnhandled(resp.Status)
 	}
 
-	if apiResp.StatusCode != http.StatusOK {
-		return nil, errors.New("ACTIVITY: /USER/POSTS/CREATED - API ERROR")
-	}
-	defer apiResp.Body.Close()
-
-	respBody, err := ioutil.ReadAll(apiResp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -81,28 +88,26 @@ type GetAllReactedPostsResponse struct {
 }
 
 func (s *service) GetAllReactedPosts(ctx context.Context) (*GetAllReactedPostsResponse, error) {
-	req, err := http.NewRequest(
+	resp, err := requests.SendRequest(
 		http.MethodGet,
 		s.userPostsEndpoint+"/reacted",
 		nil,
+		map[string]string{
+			"Authorization": fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)),
+		},
 	)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dto.GetAccessToken(ctx)))
-
-	apiResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrActivityUserUnauthorized
+	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
+		return nil, ErrAPIUnhandled(resp.Status)
 	}
 
-	if apiResp.StatusCode != http.StatusOK {
-		return nil, errors.New("ACTIVITY: /USER/POSTS/REACTED - API ERROR")
-	}
-	defer apiResp.Body.Close()
-
-	respBody, err := ioutil.ReadAll(apiResp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
