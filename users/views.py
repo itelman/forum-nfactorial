@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import authenticate
+from rest_framework import serializers
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -11,18 +12,17 @@ from posts.serializers import PostSerializer
 from .permissions import IsNotAuthenticated
 from .serializers import UserSerializer
 
-SECRET_KEY = settings.SECRET_KEY  # Use Django's secret key for signing JWTs
+SECRET_KEY = settings.SECRET_KEY
 
 
 class SignupView(APIView):
-    permission_classes = [IsNotAuthenticated]  # ✅ Only allow unauthenticated users
+    permission_classes = [IsNotAuthenticated]
 
     def post(self, request):
         serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "User registered successfully"}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "User registered successfully"}, status=status.HTTP_200_OK)
 
 
 class LoginView(APIView):
@@ -33,24 +33,22 @@ class LoginView(APIView):
         password = request.data.get("password")
 
         if not username or not password:
-            return Response({"error": "Username and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+            raise serializers.ValidationError({"generic": "Username and password are required"})
 
-        # Convert username to lowercase before authentication
         user = authenticate(username=username.lower(), password=password)
         if user is None:
-            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+            raise serializers.ValidationError(
+                {"generic": "Authentication failed. Please check your credentials and try again"})
 
         refresh = RefreshToken.for_user(user)
 
         return Response({
-            'access_token': str(refresh.access_token),
-            "type": "bearer",
-            'refresh_token': str(refresh),
+            "access_token": str(refresh.access_token),
+            "type": "Bearer",
         }, status=status.HTTP_200_OK)
 
 
 class UserProfileView(APIView):
-    """Returns the authenticated user's profile details"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -59,7 +57,6 @@ class UserProfileView(APIView):
 
 
 class UserCreatedPostsView(APIView):
-    """Lists posts created by the authenticated user"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -69,7 +66,6 @@ class UserCreatedPostsView(APIView):
 
 
 class UserReactedPostsView(APIView):
-    """Lists posts the authenticated user has liked or disliked"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):

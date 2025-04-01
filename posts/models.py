@@ -14,7 +14,6 @@ class Post(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     edited = models.DateTimeField(null=True, blank=True)
 
-    # Many-to-Many with Category through PostCategory
     categories = models.ManyToManyField(Category, related_name='posts', through='PostCategory')
 
     def __str__(self):
@@ -27,4 +26,4 @@ class PostCategory(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('post', 'category')  # Ensure a post-category pair is unique
+        unique_together = ('post', 'category')

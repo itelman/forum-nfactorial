@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from django.shortcuts import get_object_or_404
+from rest_framework import serializers
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 
@@ -11,46 +14,49 @@ class CommentViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def list(self, request, post_id):
-        """Retrieve all comments under a specific post."""
         post = get_object_or_404(Post, id=post_id)
         comments = post.comments.all().order_by('-created')
         serializer = CommentSerializer(comments, many=True, context={'request': request, 'post': post})
         return Response(serializer.data)
 
     def create(self, request, post_id):
-        """Create a comment under a post."""
         post = get_object_or_404(Post, id=post_id)
         serializer = CommentSerializer(data=request.data, context={'request': request, 'post': post})
+        serializer.is_valid(raise_exception=True)
+        comment = serializer.save(user=request.user)
 
-        if serializer.is_valid():
-            comment = serializer.save(user=request.user)  # post is assigned automatically
-            return Response(CommentSerializer(comment, context={'request': request}).data,
-                            status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(CommentSerializer(comment, context={'request': request}).data,
+                        status=status.HTTP_200_OK)
 
     def retrieve(self, request, post_id, comment_id):
-        """Retrieve a specific comment under a post."""
         comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
         serializer = CommentSerializer(comment, context={'request': request, 'post': comment.post})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, post_id, comment_id):
-        """Update a comment. Only the owner can edit."""
         comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
 
         if comment.user != request.user:
             return Response({"error": "You can only edit your own comments."}, status=status.HTTP_403_FORBIDDEN)
 
-        serializer = CommentSerializer(comment, data=request.data, partial=True, context={'request': request, 'post': comment.post})
-        if serializer.is_valid():
-            serializer.save()
-            return Response(CommentSerializer(comment, context={'request': request}).data, status=status.HTTP_200_OK)
+        new_content = request.data.get("content", None)
+        if new_content:
+            serializer = CommentSerializer(comment, data={"content": new_content}, partial=True,
+                                           context={'request': request, 'post': comment.post})
+            serializer.is_valid(raise_exception=True)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            if new_content == comment.content:
+                raise serializers.ValidationError({"content": "You haven't made any changes"})
+
+        serializer = CommentSerializer(comment, data=request.data, partial=True,
+                                       context={'request': request, 'post': comment.post})
+        serializer.is_valid(raise_exception=True)
+        comment.edited = datetime.now()
+        serializer.save()
+        
+        return Response(CommentSerializer(comment, context={'request': request}).data, status=status.HTTP_200_OK)
 
     def destroy(self, request, post_id, comment_id):
-        """Delete a comment. Only the owner can delete."""
         comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
 
         if comment.user != request.user:

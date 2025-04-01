@@ -19,23 +19,18 @@ class PostReactionViewSet(viewsets.ViewSet):
         if is_like not in [0, 1]:
             return Response({"error": "is_like must be 0 or 1"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Retrieve existing reaction BEFORE starting the transaction
         existing_reaction = PostReaction.objects.filter(post=post, user=request.user).first()
 
         with transaction.atomic():
             if existing_reaction:
-                # Step 2: Delete the existing reaction
                 existing_reaction.delete()
 
-                # Step 3: Check if the old reaction was the same as the new one
                 if existing_reaction.is_like == is_like:
                     make_insertion = False
 
-            # Step 4: Insert the new reaction (only if it's different)
             if make_insertion:
                 PostReaction.objects.create(post=post, user=request.user, is_like=is_like)
 
-            # Step 5: Update post's like/dislike counts
             update_post_reaction_counts(post.id)
 
         if make_insertion:

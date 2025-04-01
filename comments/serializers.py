@@ -12,13 +12,16 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id', 'user', 'likes', 'dislikes', 'created', 'edited', 'post']
 
+    def validate_content(self, value):
+        if value != value.strip():
+            raise serializers.ValidationError("Please provide a valid content.")
+        return value.strip()
+
     def create(self, validated_data):
-        """Assign post instance from view before saving"""
-        post = self.context.get('post')  # Retrieve post instance from context
+        post = self.context.get('post')
         return Comment.objects.create(post=post, **validated_data)
 
     def get_auth_user_reaction(self, obj):
-        """Retrieve the authenticated user's reaction to the comment (1=like, 0=dislike, -1=no reaction)."""
         user = self.context.get('request').user
         if user.is_authenticated:
             reaction = CommentReaction.objects.filter(comment=obj, user=user).first()
@@ -26,12 +29,11 @@ class CommentSerializer(serializers.ModelSerializer):
         return -1
 
     def to_representation(self, instance):
-        """Customize comment serialization output"""
         data = super().to_representation(instance)
 
         return {
             "id": data["id"],
-            "post_id": instance.post.id,  # Ensure the correct post ID is returned
+            "post_id": instance.post.id,
             "user": {"id": instance.user.id, "username": instance.user.username},
             "content": data["content"],
             "likes": data["likes"],
@@ -39,4 +41,3 @@ class CommentSerializer(serializers.ModelSerializer):
             "created": data["created"],
             "auth_user_reaction": self.get_auth_user_reaction(instance),
         }
-

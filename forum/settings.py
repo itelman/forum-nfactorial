@@ -13,6 +13,8 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+import environ
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,7 +22,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-import environ
 
 env = environ.Env()
 
@@ -43,7 +44,6 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 ALLOWED_HOSTS = [
     'localhost',
-    'forum-nfactorial.onrender.com',
 ]
 
 # Application definition
@@ -76,6 +76,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',  # Keep JWT auth
     ),
+    'EXCEPTION_HANDLER': 'forum.exceptions.bad_request_handler',
 }
 
 SIMPLE_JWT = {
