@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/itelman/forum/internal/dto"
 	"github.com/itelman/forum/pkg/requests"
+	"github.com/itelman/forum/pkg/validator"
 	"io/ioutil"
 	"net/http"
 )
@@ -27,7 +28,7 @@ type Service interface {
 	CreatePost(ctx context.Context, input *CreatePostInput) (*CreatePostResponse, error)
 	GetPost(ctx context.Context, input *GetPostInput) (*GetPostResponse, error)
 	GetAllLatestPosts() (*GetAllPostsResponse, error)
-	UpdatePost(ctx context.Context, input *UpdatePostInput) error
+	UpdatePost(ctx context.Context, input *UpdatePostInput) (*UpdatePostResponse, error)
 	DeletePost(ctx context.Context, input *DeletePostInput) error
 }
 
@@ -55,11 +56,12 @@ func WithAPI(apiLink string) Option {
 type CreatePostInput struct {
 	Title        string   `json:"title"`
 	Content      string   `json:"content"`
-	CategoriesID []string `json:"categories_id"`
+	CategoriesID []string `json:"categories"`
 }
 
 type CreatePostResponse struct {
-	PostID int `json:"id"`
+	PostID int
+	Errors validator.Errors
 }
 
 func (s *service) CreatePost(ctx context.Context, input *CreatePostInput) (*CreatePostResponse, error) {
@@ -83,8 +85,17 @@ func (s *service) CreatePost(ctx context.Context, input *CreatePostInput) (*Crea
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusBadRequest {
-		// do smth
-		return nil, ErrPostsBadRequest
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		var errs validator.Errors
+		if err := json.Unmarshal(respBody, &errs); err != nil {
+			return nil, err
+		}
+
+		return &CreatePostResponse{-1, errs}, ErrPostsBadRequest
 	} else if resp.StatusCode == http.StatusUnauthorized {
 		return nil, ErrPostsUserUnauthorized
 	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
@@ -101,7 +112,7 @@ func (s *service) CreatePost(ctx context.Context, input *CreatePostInput) (*Crea
 		return nil, err
 	}
 
-	return &CreatePostResponse{post.ID}, nil
+	return &CreatePostResponse{post.ID, nil}, nil
 }
 
 type GetPostInput struct {
@@ -189,7 +200,11 @@ type UpdatePostInput struct {
 	Content string
 }
 
-func (s *service) UpdatePost(ctx context.Context, input *UpdatePostInput) error {
+type UpdatePostResponse struct {
+	Errors validator.Errors
+}
+
+func (s *service) UpdatePost(ctx context.Context, input *UpdatePostInput) (*UpdatePostResponse, error) {
 	reqInput := struct {
 		Title   string `json:"title"`
 		Content string `json:"content"`
@@ -197,7 +212,7 @@ func (s *service) UpdatePost(ctx context.Context, input *UpdatePostInput) error 
 
 	reqBody, err := json.Marshal(reqInput)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	resp, err := requests.SendRequest(
@@ -210,24 +225,33 @@ func (s *service) UpdatePost(ctx context.Context, input *UpdatePostInput) error 
 		},
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusBadRequest {
-		// do smth
-		return ErrPostsBadRequest
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		var errs validator.Errors
+		if err := json.Unmarshal(respBody, &errs); err != nil {
+			return nil, err
+		}
+
+		return &UpdatePostResponse{errs}, ErrPostsBadRequest
 	} else if resp.StatusCode == http.StatusUnauthorized {
-		return ErrPostsUserUnauthorized
+		return nil, ErrPostsUserUnauthorized
 	} else if resp.StatusCode == http.StatusForbidden {
-		return ErrPostsForbidden
+		return nil, ErrPostsForbidden
 	} else if resp.StatusCode == http.StatusNotFound {
-		return ErrPostNotFound
+		return nil, ErrPostNotFound
 	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
-		return ErrAPIUnhandled(resp.Status)
+		return nil, ErrAPIUnhandled(resp.Status)
 	}
 
-	return nil
+	return nil, nil
 }
 
 type DeletePostInput struct {

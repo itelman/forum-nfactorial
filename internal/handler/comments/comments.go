@@ -47,7 +47,8 @@ func (h *handlers) create(w http.ResponseWriter, r *http.Request) {
 
 	input := req.(*comments.CreateCommentInput)
 
-	if err = h.comments.CreateComment(r.Context(), input); errors.Is(err, comments.ErrCommentsBadRequest) {
+	_, err = h.comments.CreateComment(r.Context(), input)
+	if errors.Is(err, comments.ErrCommentsBadRequest) {
 		h.FlashManager.UpdateFlash(dto.FlashCommentEnter)
 	} else if errors.Is(err, comments.ErrPostNotFound) {
 		h.Exceptions.ErrNotFoundHandler(w, r)
@@ -107,8 +108,17 @@ func (h *handlers) edit(w http.ResponseWriter, r *http.Request) {
 	input := req.(*comments.UpdateCommentInput)
 	comment := middleware.GetCommentFromContext(r)
 
-	if err := h.comments.UpdateComment(r.Context(), input); errors.Is(err, comments.ErrCommentsBadRequest) {
-		// do smth
+	resp, err := h.comments.UpdateComment(r.Context(), input)
+	if errors.Is(err, comments.ErrCommentsBadRequest) {
+		if err := h.TmplRender.RenderData(w, r, "edit_comment_page", templates.TemplateData{
+			templates.Comment: comment,
+			templates.Form:    validator.NewForm(r.PostForm, resp.Errors),
+		}); err != nil {
+			h.Exceptions.ErrInternalServerHandler(w, r, err)
+			return
+		}
+
+		return
 	} else if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return

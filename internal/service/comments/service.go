@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/itelman/forum/internal/dto"
 	"github.com/itelman/forum/pkg/requests"
+	"github.com/itelman/forum/pkg/validator"
 	"io/ioutil"
 	"net/http"
 )
@@ -25,9 +26,9 @@ func ErrAPIUnhandled(status string) error {
 }
 
 type Service interface {
-	CreateComment(ctx context.Context, input *CreateCommentInput) error
+	CreateComment(ctx context.Context, input *CreateCommentInput) (*CreateCommentResponse, error)
 	GetComment(input *GetCommentInput) (*GetCommentResponse, error)
-	UpdateComment(ctx context.Context, input *UpdateCommentInput) error
+	UpdateComment(ctx context.Context, input *UpdateCommentInput) (*UpdateCommentResponse, error)
 	DeleteComment(ctx context.Context, input *DeleteCommentInput) error
 }
 
@@ -57,14 +58,18 @@ type CreateCommentInput struct {
 	Content string
 }
 
-func (s *service) CreateComment(ctx context.Context, input *CreateCommentInput) error {
+type CreateCommentResponse struct {
+	Errors validator.Errors
+}
+
+func (s *service) CreateComment(ctx context.Context, input *CreateCommentInput) (*CreateCommentResponse, error) {
 	reqInput := struct {
 		Content string `json:"content"`
 	}{input.Content}
 
 	reqBody, err := json.Marshal(reqInput)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	resp, err := requests.SendRequest(
@@ -77,22 +82,31 @@ func (s *service) CreateComment(ctx context.Context, input *CreateCommentInput) 
 		},
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusBadRequest {
-		// do smth
-		return ErrCommentsBadRequest
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		var errs validator.Errors
+		if err := json.Unmarshal(respBody, &errs); err != nil {
+			return nil, err
+		}
+
+		return &CreateCommentResponse{errs}, ErrCommentsBadRequest
 	} else if resp.StatusCode == http.StatusUnauthorized {
-		return ErrCommentsUserUnauthorized
+		return nil, ErrCommentsUserUnauthorized
 	} else if resp.StatusCode == http.StatusNotFound {
-		return ErrPostNotFound
+		return nil, ErrPostNotFound
 	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
-		return ErrAPIUnhandled(resp.Status)
+		return nil, ErrAPIUnhandled(resp.Status)
 	}
 
-	return nil
+	return nil, nil
 }
 
 type GetCommentInput struct {
@@ -141,14 +155,18 @@ type UpdateCommentInput struct {
 	Content string
 }
 
-func (s *service) UpdateComment(ctx context.Context, input *UpdateCommentInput) error {
+type UpdateCommentResponse struct {
+	Errors validator.Errors
+}
+
+func (s *service) UpdateComment(ctx context.Context, input *UpdateCommentInput) (*UpdateCommentResponse, error) {
 	reqInput := struct {
 		Content string `json:"content"`
 	}{input.Content}
 
 	reqBody, err := json.Marshal(reqInput)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	resp, err := requests.SendRequest(
@@ -161,24 +179,33 @@ func (s *service) UpdateComment(ctx context.Context, input *UpdateCommentInput) 
 		},
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusBadRequest {
-		// do smth
-		return ErrCommentsBadRequest
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		var errs validator.Errors
+		if err := json.Unmarshal(respBody, &errs); err != nil {
+			return nil, err
+		}
+
+		return &UpdateCommentResponse{errs}, ErrCommentsBadRequest
 	} else if resp.StatusCode == http.StatusUnauthorized {
-		return ErrCommentsUserUnauthorized
+		return nil, ErrCommentsUserUnauthorized
 	} else if resp.StatusCode == http.StatusForbidden {
-		return ErrCommentsForbidden
+		return nil, ErrCommentsForbidden
 	} else if resp.StatusCode == http.StatusNotFound {
-		return ErrCommentNotFound
+		return nil, ErrCommentNotFound
 	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
-		return ErrAPIUnhandled(resp.Status)
+		return nil, ErrAPIUnhandled(resp.Status)
 	}
 
-	return nil
+	return nil, nil
 }
 
 type DeleteCommentInput struct {

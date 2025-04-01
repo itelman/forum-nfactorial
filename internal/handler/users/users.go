@@ -57,8 +57,16 @@ func (h *handlers) signupPost(w http.ResponseWriter, r *http.Request) {
 
 	input := req.(*users.SignupUserInput)
 
-	if err := h.users.SignupUser(input); errors.Is(err, users.ErrUsersBadRequest) {
-		// do smth
+	resp, err := h.users.SignupUser(input)
+	if errors.Is(err, users.ErrUsersBadRequest) {
+		if err := h.TmplRender.RenderData(w, r, "signup_page", templates.TemplateData{
+			templates.Form: validator.NewForm(r.PostForm, resp.Errors),
+		}); err != nil {
+			h.Exceptions.ErrInternalServerHandler(w, r, err)
+			return
+		}
+
+		return
 	} else if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
@@ -94,9 +102,14 @@ func (h *handlers) loginPost(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.users.LoginUser(input)
 	if errors.Is(err, users.ErrUsersBadRequest) {
-		// do smth
-	} else if errors.Is(err, users.ErrInvalidCredentials) {
-		//
+		if err := h.TmplRender.RenderData(w, r, "login_page", templates.TemplateData{
+			templates.Form: validator.NewForm(r.PostForm, resp.Errors),
+		}); err != nil {
+			h.Exceptions.ErrInternalServerHandler(w, r, err)
+			return
+		}
+
+		return
 	} else if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return

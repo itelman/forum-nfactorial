@@ -78,7 +78,21 @@ func (h *handlers) create(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.posts.CreatePost(r.Context(), input)
 	if errors.Is(err, posts.ErrPostsBadRequest) {
-		// do smth
+		catgRsp, err := h.categories.GetAllCategories()
+		if err != nil {
+			h.Exceptions.ErrInternalServerHandler(w, r, err)
+			return
+		}
+
+		if err := h.TmplRender.RenderData(w, r, "create_page", templates.TemplateData{
+			templates.Form:       validator.NewForm(r.PostForm, resp.Errors),
+			templates.Categories: catgRsp.Categories,
+		}); err != nil {
+			h.Exceptions.ErrInternalServerHandler(w, r, err)
+			return
+		}
+
+		return
 	} else if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return
@@ -161,8 +175,17 @@ func (h *handlers) edit(w http.ResponseWriter, r *http.Request) {
 	input := req.(*posts.UpdatePostInput)
 	post := middleware.GetPostFromContext(r)
 
-	if err := h.posts.UpdatePost(r.Context(), input); errors.Is(err, posts.ErrPostsBadRequest) {
-		// do smth
+	resp, err := h.posts.UpdatePost(r.Context(), input)
+	if errors.Is(err, posts.ErrPostsBadRequest) {
+		if err := h.TmplRender.RenderData(w, r, "edit_post_page", templates.TemplateData{
+			templates.Post: post,
+			templates.Form: validator.NewForm(r.PostForm, resp.Errors),
+		}); err != nil {
+			h.Exceptions.ErrInternalServerHandler(w, r, err)
+			return
+		}
+
+		return
 	} else if err != nil {
 		h.Exceptions.ErrInternalServerHandler(w, r, err)
 		return

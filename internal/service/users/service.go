@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/itelman/forum/pkg/requests"
+	"github.com/itelman/forum/pkg/validator"
 	"io/ioutil"
 	"net/http"
 
@@ -24,7 +25,7 @@ func ErrAPIUnhandled(status string) error {
 }
 
 type Service interface {
-	SignupUser(input *SignupUserInput) error
+	SignupUser(input *SignupUserInput) (*SignupUserResponse, error)
 	LoginUser(input *LoginUserInput) (*LoginUserResponse, error)
 	GetAuthUser(ctx context.Context) (*GetAuthUserResponse, error)
 }
@@ -56,10 +57,14 @@ type SignupUserInput struct {
 	Password string `json:"password"`
 }
 
-func (s *service) SignupUser(input *SignupUserInput) error {
+type SignupUserResponse struct {
+	Errors validator.Errors
+}
+
+func (s *service) SignupUser(input *SignupUserInput) (*SignupUserResponse, error) {
 	reqBody, err := json.Marshal(input)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	resp, err := requests.SendRequest(
@@ -69,18 +74,27 @@ func (s *service) SignupUser(input *SignupUserInput) error {
 		map[string]string{"Content-Type": "application/json"},
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusBadRequest {
-		// do smth
-		return ErrUsersBadRequest
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		var errs validator.Errors
+		if err := json.Unmarshal(respBody, &errs); err != nil {
+			return nil, err
+		}
+
+		return &SignupUserResponse{errs}, ErrUsersBadRequest
 	} else if !(resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices) {
-		return ErrAPIUnhandled(resp.Status)
+		return nil, ErrAPIUnhandled(resp.Status)
 	}
 
-	return nil
+	return nil, nil
 }
 
 type LoginUserInput struct {
@@ -89,9 +103,9 @@ type LoginUserInput struct {
 }
 
 type LoginUserResponse struct {
-	AccessToken  string `json:"access_token"`
-	Type         string `json:"type"`
-	RefreshToken string `json:"refresh_token"`
+	AccessToken string `json:"access_token"`
+	Type        string `json:"type"`
+	Errors      validator.Errors
 }
 
 func (s *service) LoginUser(input *LoginUserInput) (*LoginUserResponse, error) {
@@ -112,10 +126,17 @@ func (s *service) LoginUser(input *LoginUserInput) (*LoginUserResponse, error) {
 	defer apiResp.Body.Close()
 
 	if apiResp.StatusCode == http.StatusBadRequest {
-		// do smth
-		return nil, ErrUsersBadRequest
-	} else if apiResp.StatusCode == http.StatusUnauthorized {
-		return nil, ErrInvalidCredentials
+		respBody, err := ioutil.ReadAll(apiResp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		var errs validator.Errors
+		if err := json.Unmarshal(respBody, &errs); err != nil {
+			return nil, err
+		}
+
+		return &LoginUserResponse{Errors: errs}, ErrUsersBadRequest
 	} else if !(apiResp.StatusCode >= http.StatusOK && apiResp.StatusCode < http.StatusMultipleChoices) {
 		return nil, ErrAPIUnhandled(apiResp.Status)
 	}

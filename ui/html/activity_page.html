@@ -36,38 +36,6 @@
             <time class="comment-posted-time">Created: {{humanDate .Created}}</time>
         </div>
     </div>
-
-    {{range .Comments}}
-    <div class="comment-posted">
-        <h3 class="comment-posted-username">Author: {{.User.Username}}</h3>
-
-        <p class="comment-posted-text">{{.Content}}</p>
-
-        <div class="comment-posted-metadata">
-            <div class="reaction-container">
-                {{if eq .AuthUserReaction 1}}
-                <img id="comment-like-icon-{{.ID}}" class="like-icon" src="/static/img/like-active.svg" alt="Like">
-                {{else}}
-                <img id="comment-like-icon-{{.ID}}" class="like-icon" src="/static/img/like-svgrepo-com(1).svg"
-                    alt="Like">
-                {{end}}
-                <span id="like-count-{{.ID}}">{{.Likes}}</span>
-
-                {{if eq .AuthUserReaction 0}}
-                <img id="comment-dislike-icon-{{.ID}}" class="dislike-icon" src="/static/img/dislike-active.svg"
-                    alt="Dislike">
-                {{else}}
-                <img id="comment-dislike-icon-{{.ID}}" class="dislike-icon" src="/static/img/dislike-svgrepo-com.svg"
-                    alt="Dislike">
-                {{end}}
-                <span id="dislike-count-{{.ID}}">{{.Dislikes}}</span>
-            </div>
-
-            <time class="comment-posted-time">Created: {{humanDate .Created}}</time>
-        </div>
-    </div>
-    {{end}}
-
 </div>
 {{end}}
 
