@@ -3,6 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	authMiddleware "github.com/itelman/forum/internal/handler/users/middleware"
 	"github.com/itelman/forum/internal/service/activity"
 	"github.com/itelman/forum/internal/service/categories"
@@ -11,12 +18,6 @@ import (
 	"github.com/itelman/forum/internal/service/filters"
 	"github.com/itelman/forum/internal/service/post_reactions"
 	"github.com/itelman/forum/internal/service/posts"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/itelman/forum/internal/exception"
 	"github.com/itelman/forum/internal/handler"
@@ -31,8 +32,6 @@ import (
 	"github.com/itelman/forum/internal/middleware/standard"
 	"github.com/itelman/forum/internal/service/users"
 	"github.com/itelman/forum/pkg/templates"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func checkDependencyHealth(url string, timeout time.Duration) error {
