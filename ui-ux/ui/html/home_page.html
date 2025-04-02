@@ -1,0 +1,50 @@
+{{template "base" .}}
+{{define "title"}}Home{{end}}
+{{define "body"}}
+    <h2>Latest Posts</h2>
+
+    <form action="/results" method="post">
+
+        {{with .Form.Errors.Get "generic"}}
+            <div class="error">{{.}}</div>
+        {{end}}
+
+        <div class="category">
+            <fieldset class="categories-fieldset">
+                <legend>Filters:</legend>
+
+                {{range .Categories}}
+                    <div class="categories-container-inner">
+                        <input type="radio" id="{{.ID}}" name="category_id" value="{{.ID}}">
+                        <label for="{{.ID}}">{{.Name}}</label>
+                    </div>
+                {{end}}
+
+                <div class="signup-page-form-submit">
+                    <input type="submit" value="Search">
+                </div>
+            </fieldset>
+        </div>
+    </form>
+
+    {{if .Posts}}
+        <table id="post-table">
+            <tr>
+                <th>Title</th>
+                <th>User</th>
+                <th>Created</th>
+            </tr>
+
+            {{range .Posts}}
+                <tr class="post-tr">
+                    <td><a href='/posts?id={{.ID}}'>{{.Title}}</a></td>
+                    <td>{{.User.Username}}</td>
+                    <td>{{humanDate .Created}}</td>
+                </tr>
+            {{end}}
+        </table>
+    {{else}}
+        <p class="comment-info">No Posts Yet!</p>
+    {{end}}
+
+{{end}}

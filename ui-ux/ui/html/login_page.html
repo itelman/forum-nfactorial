@@ -1,0 +1,38 @@
+{{template "base" .}}
+
+{{define "title"}}Sign In{{end}}
+
+{{define "body"}}
+    <form action="/user/login" method="POST">
+        {{with .Form}}
+
+            {{with .Errors.Get "generic"}}
+                <div class="error">{{.}}</div>
+            {{end}}
+
+            <div>
+                <label>Username:</label>
+
+                {{with .Errors.Get "username"}}
+                    <label class="error">{{.}}</label>
+                {{end}}
+
+                <input type="text" name="username" value='{{.Get "username"}}'>
+            </div>
+
+            <div>
+                <label>Password:</label>
+
+                {{with .Errors.Get "password"}}
+                    <label class="error">{{.}}</label>
+                {{end}}
+                
+                <input type="password" name="password">
+            </div>
+
+            <div>
+                <input type="submit" value="Sign In">
+            </div>
+        {{end}}
+    </form>
+{{end}}
