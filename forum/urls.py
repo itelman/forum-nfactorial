@@ -22,7 +22,7 @@ from .views import HealthCheckView
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('user', include('users.urls')),
-    path('posts', include('posts.urls')),  # Handles both posts & comments
+    path('posts', include('posts.urls')),
     path('categories', include('categories.urls')),
     path('health', HealthCheckView.as_view(), name="health-check"),
 ]

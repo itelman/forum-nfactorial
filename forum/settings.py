@@ -44,6 +44,7 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 ALLOWED_HOSTS = [
     'localhost',
+    'forum-nfactorial.onrender.com',
 ]
 
 # Application definition

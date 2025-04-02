@@ -6,14 +6,12 @@ from rest_framework.views import APIView
 
 
 class HealthCheckView(APIView):
-    """Health check endpoint to verify API availability and system info."""
-
     def get(self, request):
         data = {
             "status": "available",
             "system_info": {
-                "environment": "development",  # Change this based on actual environment
-                "version": "1.0",  # Update with actual version
+                "environment": "development",
+                "version": "1.0",
                 "os": platform.system(),
                 "python_version": platform.python_version(),
             }
