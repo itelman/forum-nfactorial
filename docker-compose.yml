@@ -5,6 +5,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    restart: unless-stopped
     container_name: forum-backend
     volumes:
       - ./backend:/app
@@ -19,6 +20,7 @@ services:
     build:
       context: ./ui-ux
       dockerfile: Dockerfile
+    restart: unless-stopped
     container_name: forum-frontend
     volumes:
       - ./ui-ux:/app
@@ -31,6 +33,7 @@ services:
 
   nginx:
     image: nginx:latest
+    restart: unless-stopped
     container_name: forum-nginx
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
