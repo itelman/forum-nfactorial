@@ -26,6 +26,6 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - API_LINK=http://localhost:8000
+      - API_LINK=http://backend:8000
     depends_on:
       - backend
