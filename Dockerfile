@@ -1,20 +1,16 @@
-# Use an official Docker image that includes Docker and Docker Compose
-FROM docker:latest 
+# Use docker-compose inside Fly.io
+FROM docker:latest
 
-# Install Docker Compose
-RUN apk add --no-cache docker-compose
-
-# Set the working directory
 WORKDIR /app
 
-# Copy your entire project
+# Copy the project files
 COPY . .
 
-# Ensure Docker Compose file has correct permissions
-RUN chmod +x /app/docker-compose.yml
+# Install docker-compose
+RUN apk add --no-cache docker-compose
 
 # Expose the frontend port that Koyeb should serve
 EXPOSE 8080
 
-# Run Docker Compose when the container starts
+# Start services using docker-compose
 CMD ["docker-compose", "up"]
