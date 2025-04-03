@@ -1,5 +1,5 @@
 # Start from an official image with Docker installed
-FROM docker:20.10.24-dind
+FROM docker:latest
 
 # Install Docker Compose
 RUN apk add --no-cache docker-compose
@@ -9,6 +9,8 @@ WORKDIR /app
 
 # Copy project files
 COPY . .
+
+EXPOSE 8080
 
 # Run Docker Compose
 CMD ["docker-compose", "up", "--build"]
