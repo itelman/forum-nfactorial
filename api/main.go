@@ -141,7 +141,7 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		infoLog.Printf("Starting server on %s", conf.Host)
+		infoLog.Printf("Starting server on %s", srv.Addr)
 
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errorLog.Fatal(err)
