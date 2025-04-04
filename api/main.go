@@ -129,7 +129,7 @@ func main() {
 	infoLog.Println("Dependency API is healthy, starting server...")
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf("http://%s:%s", conf.Host, conf.Port),
+		Addr:         fmt.Sprintf("%s:%s", conf.Host, conf.Port),
 		ErrorLog:     errorLog,
 		Handler:      standard.NewMiddleware(exceptionHandlers, infoLog).Chain(mux),
 		IdleTimeout:  time.Minute,
@@ -141,7 +141,7 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		infoLog.Printf("Starting server at %s", srv.Addr)
+		infoLog.Printf("Starting server at %s", fmt.Sprintf("http://%s", srv.Addr))
 
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errorLog.Fatal(err)
