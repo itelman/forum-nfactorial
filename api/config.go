@@ -23,7 +23,7 @@ func newConfig() *Config {
 
 	host := os.Getenv("HOST")
 	if len(host) == 0 {
-		host = fmt.Sprintf("http://localhost:%s", port)
+		host = "0.0.0.0"
 	}
 
 	apiLink := os.Getenv("API_LINK")
