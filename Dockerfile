@@ -17,8 +17,5 @@ WORKDIR /app
 # Copy application code from the builder stage
 COPY --from=builder /app .
 
-# Expose port 8080
-EXPOSE 8080
-
 # Start the application using go run
 CMD ["go", "run", "./api"]
