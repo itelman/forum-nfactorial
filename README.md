@@ -2,7 +2,7 @@
 
 ### Usage
 
-The REST API (backend part) of this application can be accessed at: [https://forum-nfactorial.onrender.com](https://forum-nfactorial.onrender.com)
+The REST API (backend part) of this application can be accessed at: [https://backend-13af.up.railway.app](https://backend-13af.up.railway.app)
 
 ### Tech Stack:
 
