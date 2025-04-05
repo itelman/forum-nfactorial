@@ -24,7 +24,7 @@ docker-compose up --build
 
 - You will be able to access the service at: http://localhost:8080
 
-Furthermore, the REST API (backend part) of this application can be accessed at: [https://forum-nfactorial.onrender.com](https://forum-nfactorial.onrender.com)
+Furthermore, the app can be accessed at: [https://forum-13af.up.railway.app](https://forum-13af.up.railway.app). The REST API (backend part) is at: [https://backend-13af.up.railway.app](https://backend-13af.up.railway.app).
 
 ### Tech Stack:
 
