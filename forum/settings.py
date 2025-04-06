@@ -44,6 +44,10 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 ALLOWED_HOSTS = ['*']
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://backend-13af.up.railway.app"
+]
+
 # Application definition
 
 INSTALLED_APPS = [
